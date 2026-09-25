@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /report/
+Sitemap: https://ghargrades.com/sitemap.xml

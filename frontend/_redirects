@@ -1,2 +1,5 @@
-# Netlify is the front door for ghargrades.com; every path is served by the Railway service at api.ghargrades.com
-/*    https://api.ghargrades.com/:splat    200
+# Static pages and /assets are served by Netlify from /frontend. Everything dynamic runs on Railway.
+/api/*         https://api.ghargrades.com/api/:splat        200
+/report/*      https://api.ghargrades.com/report/:splat     200
+/healthz       https://api.ghargrades.com/healthz           200
+/bangalore     /                                            301

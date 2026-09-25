@@ -1,19 +1,23 @@
-// page.js — the landing: hero with the free lookup pill and the record card, stat cards, free vs paid,
-// the three layers, the animated check run with the extension date line, the nine-layer ledger, the score,
-// FAQ, CTA. Palette: ledger indigo + marigold. All changeable values come from config.js.
-//
-// GET /                 -> landing (story + free lookup)
-// GET /api/lookup?q=    -> free lookup: status, original completion, extension count
-// GET /api/projects     -> launch set list (name, slug, rera_no, locality)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bangalore Property Intelligence | GharGrades: check the K-RERA record before you book</title>
+<meta name="description" content="Check any K-RERA registered Bengaluru project before you book: completion date history and extensions, progress filings, occupancy certificates, complaint orders, promoter record, comparable projects, the GharGrades Property Score and a Decision Agent. Free lookup, full report ₹200.">
+<link rel="canonical" href="https://ghargrades.com/">
 
-import { INDIA, RUPEE, siteConfig } from './config.js';
-import { listProjects, findProject, freeLookup, getCaptured } from './projects.js';
-import { WEIGHTS, BANDS, SCORE_VERSION } from './score.js';
-
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-/* ---------------- shared page css (landing + report reuse the tokens) ---------------- */
-export const BLR_CSS = `
+<meta property="og:type" content="website"><meta property="og:site_name" content="GharGrades">
+<meta property="og:title" content="Every project has a record. Check before you book. | GharGrades">
+<meta property="og:description" content="The records are public. The intelligence isn’t. K-RERA completion history, extensions, certificates, complaints and promoter record for any registered Bengaluru project. Free lookup, full report ₹200.">
+<meta property="og:url" content="https://ghargrades.com/">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"GharGrades Property Intelligence Report","brand":{"@type":"Brand","name":"GharGrades"},"description":"K-RERA record check on any registered Bengaluru project before you book: completion date history and extensions, progress filings, occupancy certificates, complaint orders, promoter record, two comparable projects, the GharGrades Property Score and a Decision Agent that answers from the record.","offers":{"@type":"Offer","price":"200","priceCurrency":"INR","availability":"https://schema.org/InStock","url":"https://ghargrades.com/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is this the K-RERA website?","acceptedAnswer":{"@type":"Answer","text":"No. K-RERA (https://rera.karnataka.gov.in) is the regulator and the only official record. GharGrades reads that public record, keeps every fact with its source and capture date, computes a published score from it, and lets you compare projects and ask the Decision Agent about what the record says. Every report tells you to verify the live entry on the portal, and links to it."}},{"@type":"Question","name":"What does the free lookup show?","acceptedAnswer":{"@type":"Answer","text":"Three fields from the registration record: current registration status, the original completion date the promoter declared, and how many completion extensions are on record. Nothing more, and nothing hidden: the full report is where the dates, filings, complaints, promoter history, comparables and the score live."}},{"@type":"Question","name":"What is in the ₹200 report?","acceptedAnswer":{"@type":"Answer","text":"The completion timeline in full (original date, every extension, months requested, how far past the original date the project is today), the registration record (promoter entity, units, area, declared cost, escrow bank, approvals on file), the latest quarterly progress filing, occupancy and completion certificates on record, complaint orders located, the promoter group's other registrations, two comparable projects in the same corridor with their own scores, the GharGrades Property Score with its working shown, the questions each finding supports, and the Decision Agent."}},{"@type":"Question","name":"What is the GharGrades Property Score?","acceptedAnswer":{"@type":"Answer","text":"A number from 0 to 100, higher is stronger, computed by one published formula from the record: completion timeline (30), delivery certificates (25), progress filings (15), complaint orders (15) and promoter record (15). The report shows every point and the record line behind it. The score is our opinion computed from the record; the record itself is quoted alongside so you can disagree with the formula and still use the facts."}},{"@type":"Question","name":"What is the Decision Agent?","acceptedAnswer":{"@type":"Answer","text":"A conversational layer inside your report that answers only from the record it was built on. Ask when possession was promised, what the extension says, whether an occupancy certificate exists, how the comparables differ. Every answer cites the source and the capture date. It compares records; it never tells you what to buy."}},{"@type":"Question","name":"Do you take money from builders or agents?","acceptedAnswer":{"@type":"Answer","text":"No. No builder, promoter, agent or portal can pay to be listed, scored, or left out. The report is paid for by the buyer and works for the buyer."}},{"@type":"Question","name":"How current is the record?","acceptedAnswer":{"@type":"Answer","text":"K-RERA filings move quarterly (progress reports) and on events (extensions, certificates, orders). Each fact in your report carries the date it was captured (launch set captured 2026-09-25). Screenshots of a report can go stale; the report itself tells you where to verify the live entry."}},{"@type":"Question","name":"What about plots and villas?","acceptedAnswer":{"@type":"Answer","text":"Plotted developments and villa projects are registered with K-RERA too, and the same record fields apply: completion dates, extensions, completion certificates, complaints. They are in scope. Khata, encumbrance and layout approval checks sit outside the K-RERA record and are noted as such."}},{"@type":"Question","name":"Which projects can I check today?","acceptedAnswer":{"@type":"Answer","text":"The launch set covers Bengaluru projects registered with K-RERA, loading corridor by corridor, north Bengaluru first. If your project is not in the set yet, the lookup tells you, and you can check the live entry on the portal while the crawl catches up."}},{"@type":"Question","name":"What is the Buyers Network?","acceptedAnswer":{"@type":"Answer","text":"The third layer: verified buyers of the same project, connected to each other, with no builders, agents or sellers in the room. It opens per project as members join, after the report. Entry is through a report; membership is pseudonymous and never published."}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"GharGrades","item":"https://ghargrades.com"}]}</script>
+<style>
 h1,h2,h3{text-wrap:balance}
 html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 @media(max-width:640px){h1{font-size:1.85rem!important;line-height:1.18!important}h2{font-size:1.4rem!important;line-height:1.22!important}.container{padding-left:18px!important;padding-right:18px!important}.lead{font-size:1rem!important}}
@@ -210,93 +214,14 @@ footer a{color:#C9D0E4!important}
 footer a:hover{color:#fff!important}
 footer .fbadge{border-color:#2C3A5E!important;color:#C9D0E4!important;background:transparent!important}
 footer .foot-legal,footer .foot-legal span{color:#9AA3BD!important;border-color:#1E2A4A!important}
-`;
-
-/* ---------------- site chrome: own nav and footer ---------------- */
-export function ownNav(cfg) {
-  return `<nav class="nav"><div class="container nav-inner">
-  <a class="brand" href="${cfg.routes.page}"><svg class="mark" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="3" y="9" width="20" height="14" rx="2" fill="none" stroke="#14213D" stroke-width="2.4"/><path d="M2 10 L13 3 L24 10" fill="none" stroke="#E9A825" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg> ${esc(cfg.brand.name)}</a>
-  <div class="nav-links"><a href="#pricing">Free lookup</a><a href="#score">The score</a><a href="#layers">What we read</a><a href="${cfg.routes.report}/adarsh-crest?demo=1">Sample report</a><a class="btn btn-primary" href="#f_project" onclick="document.getElementById('f_project').focus();return false;">Look up a project</a></div>
-</div></nav>`;
-}
-export function ownFooter(cfg) {
-  return `<footer>
-  <div class="container">
-    <div class="foot-grid">
-      <div class="foot-brand">
-        <a class="brand" href="${cfg.routes.page}">${esc(cfg.brand.name)}</a>
-        <p>Property Intelligence for ${esc(INDIA.city)}. The K-RERA record, read, scored and compared, before the decision.</p>
-        <div class="foot-badges"><span class="fbadge">100% PUBLIC RECORDS</span><span class="fbadge">EVERY FACT SOURCED AND DATED</span><span class="fbadge">NO BUILDER OR AGENT MONEY</span></div>
-      </div>
-      <div><h4>Product</h4><a href="#pricing">Free lookup and the report</a><a href="${cfg.routes.report}/adarsh-crest?demo=1">Sample report</a><a href="#score">How the score works</a></div>
-      <div><h4>The record</h4><a href="${INDIA.portal_url}" rel="noopener">K-RERA portal</a><a href="#layers">The nine layers</a></div>
-      <div><h4>Company</h4><a href="mailto:${esc(cfg.contact_email)}">${esc(cfg.contact_email)}</a></div>
-    </div>
-    <div class="foot-legal"><span>&copy; 2026 ${esc(cfg.brand.copyright)} &middot; Independent by design.</span><span>${esc(cfg.brand.name)} reads public records and computes an opinion score by a published formula; it does not certify project completion, title, or delivery. Verify every entry on ${esc(INDIA.portal_url.replace('https://', ''))}.</span></div>
-  </div>
-</footer>`;
-}
-
-/* ---------------- landing page ---------------- */
-export async function bangalorePage(req, res) {
-  res.set('Cache-Control', 'public, max-age=3600');
-  res.send(renderLanding(siteConfig(req)));
-}
-// renderLanding(cfg) -> HTML string. Used by the route above and by api/generate-pages.js (static frontend/index.html for Netlify).
-export function renderLanding(cfg) {
-  const B = cfg.brand, R = cfg.routes, SITE_URL = cfg.site_url;
-  const price = RUPEE(INDIA.report_price_inr);
-  const captured = getCaptured();
-  const faq = [
-    ['Is this the K-RERA website?', `No. K-RERA (${INDIA.portal_url}) is the regulator and the only official record. ${B.name} reads that public record, keeps every fact with its source and capture date, computes a published score from it, and lets you compare projects and ask the Decision Agent about what the record says. Every report tells you to verify the live entry on the portal, and links to it.`],
-    ['What does the free lookup show?', 'Three fields from the registration record: current registration status, the original completion date the promoter declared, and how many completion extensions are on record. Nothing more, and nothing hidden: the full report is where the dates, filings, complaints, promoter history, comparables and the score live.'],
-    [`What is in the ${price} report?`, `The completion timeline in full (original date, every extension, months requested, how far past the original date the project is today), the registration record (promoter entity, units, area, declared cost, escrow bank, approvals on file), the latest quarterly progress filing, occupancy and completion certificates on record, complaint orders located, the promoter group's other registrations, two comparable projects in the same corridor with their own scores, the ${B.score_name} with its working shown, the questions each finding supports, and the Decision Agent.`],
-    [`What is the ${B.score_name}?`, `A number from 0 to 100, higher is stronger, computed by one published formula from the record: completion timeline (${WEIGHTS.timeline}), delivery certificates (${WEIGHTS.delivery}), progress filings (${WEIGHTS.progress}), complaint orders (${WEIGHTS.complaints}) and promoter record (${WEIGHTS.promoter}). The report shows every point and the record line behind it. The score is our opinion computed from the record; the record itself is quoted alongside so you can disagree with the formula and still use the facts.`],
-    ['What is the Decision Agent?', 'A conversational layer inside your report that answers only from the record it was built on. Ask when possession was promised, what the extension says, whether an occupancy certificate exists, how the comparables differ. Every answer cites the source and the capture date. It compares records; it never tells you what to buy.'],
-    ['Do you take money from builders or agents?', 'No. No builder, promoter, agent or portal can pay to be listed, scored, or left out. The report is paid for by the buyer and works for the buyer.'],
-    ['How current is the record?', `K-RERA filings move quarterly (progress reports) and on events (extensions, certificates, orders). Each fact in your report carries the date it was captured (launch set captured ${captured}). Screenshots of a report can go stale; the report itself tells you where to verify the live entry.`],
-    ['What about plots and villas?', 'Plotted developments and villa projects are registered with K-RERA too, and the same record fields apply: completion dates, extensions, completion certificates, complaints. They are in scope. Khata, encumbrance and layout approval checks sit outside the K-RERA record and are noted as such.'],
-    ['Which projects can I check today?', `The launch set covers Bengaluru projects registered with K-RERA, loading corridor by corridor, north Bengaluru first. If your project is not in the set yet, the lookup tells you, and you can check the live entry on the portal while the crawl catches up.`],
-    ['What is the Buyers Network?', 'The third layer: verified buyers of the same project, connected to each other, with no builders, agents or sellers in the room. It opens per project as members join, after the report. Entry is through a report; membership is pseudonymous and never published.'],
-  ];
-  const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
-  const productLd = { '@context': 'https://schema.org', '@type': 'Product', name: `${B.name} Property Intelligence Report`, brand: { '@type': 'Brand', name: B.name },
-    description: `K-RERA record check on any registered ${INDIA.city} project before you book: completion date history and extensions, progress filings, occupancy certificates, complaint orders, promoter record, two comparable projects, the ${B.score_name} and a Decision Agent that answers from the record.`,
-    offers: { '@type': 'Offer', price: String(INDIA.report_price_inr), priceCurrency: 'INR', availability: 'https://schema.org/InStock', url: `${SITE_URL}${R.page}` } };
-  const crumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
-    { '@type': 'ListItem', position: 1, name: B.name, item: SITE_URL }] };
-
-  // "Latest from the record": three record lines from the launch set (record level, sourced, dated)
-  const news = [
-    ['Hebbal: a 203 unit project declared completion for 31 Dec 2025; an extension to 31 Dec 2026 is applied for and not yet on the certificate. Latest filing certifies 74 percent.', `K-RERA record, captured ${captured}`],
-    ['Thanisandra: a 716 home block took one six month extension and received a partial occupancy certificate eleven days before the extended deadline.', `BBMP partial OC 20 Jan 2026, captured ${captured}`],
-    ['Bagalur: full occupancy certificate on record since March 2024; the only extension on file is administrative, for conveyance after completion.', `KIADB OC 12 Mar 2024, captured ${captured}`],
-  ];
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${esc(INDIA.city_alt)} Property Intelligence | ${esc(B.name)}: check the K-RERA record before you book</title>
-<meta name="description" content="Check any K-RERA registered ${esc(INDIA.city)} project before you book: completion date history and extensions, progress filings, occupancy certificates, complaint orders, promoter record, comparable projects, the ${esc(B.score_name)} and a Decision Agent. Free lookup, full report ${esc(price)}.">
-<link rel="canonical" href="${SITE_URL}${R.page}">
-${cfg.public ? '' : '<meta name="robots" content="noindex,nofollow">'}
-<meta property="og:type" content="website"><meta property="og:site_name" content="${esc(B.name)}">
-<meta property="og:title" content="${esc(INDIA.h1)} | ${esc(B.name)}">
-<meta property="og:description" content="${esc(INDIA.tagline)} K-RERA completion history, extensions, certificates, complaints and promoter record for any registered ${esc(INDIA.city)} project. Free lookup, full report ${esc(price)}.">
-<meta property="og:url" content="${SITE_URL}${R.page}">
-<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/styles.css">
-<script type="application/ld+json">${JSON.stringify(productLd)}</script>
-<script type="application/ld+json">${JSON.stringify(faqLd)}</script>
-<script type="application/ld+json">${JSON.stringify(crumbLd)}</script>
-<style>${BLR_CSS}</style>
+</style>
 </head>
 <body>
 
-${ownNav(cfg)}
+<nav class="nav"><div class="container nav-inner">
+  <a class="brand" href="/"><svg class="mark" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="3" y="9" width="20" height="14" rx="2" fill="none" stroke="#14213D" stroke-width="2.4"/><path d="M2 10 L13 3 L24 10" fill="none" stroke="#E9A825" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg> GharGrades</a>
+  <div class="nav-links"><a href="#pricing">Free lookup</a><a href="#score">The score</a><a href="#layers">What we read</a><a href="/report/adarsh-crest?demo=1">Sample report</a><a class="btn btn-primary" href="#f_project" onclick="document.getElementById('f_project').focus();return false;">Look up a project</a></div>
+</div></nav>
 
 <div class="blr">
 
@@ -306,11 +231,11 @@ ${ownNav(cfg)}
     <div class="h2-grid">
 
       <div class="h2-main">
-        <span class="eyebrow">${esc(B.name)} &middot; Property Intelligence &middot; No builder or agent money</span>
+        <span class="eyebrow">GharGrades &middot; Property Intelligence &middot; No builder or agent money</span>
         <p class="h2-kicker">Property Intelligence &middot; Decision Agent &middot; Buyers Network</p>
         <h1 class="h2-title">Every project has a record. <span class="hl-underline">Check before you book.</span></h1>
-        <p class="h2-lead">Before you pay a booking amount on a ${esc(INDIA.city)} project, read what the K-RERA record says about it: <strong>the completion date the builder declared, every extension since, the progress filings, the occupancy certificate, the complaint orders, and the promoter&#39;s other projects.</strong> Then compare it with two projects in the same corridor. ${esc(INDIA.tagline)}</p>
-        <div class="zseal" aria-label="${esc(B.name)} seal">
+        <p class="h2-lead">Before you pay a booking amount on a Bengaluru project, read what the K-RERA record says about it: <strong>the completion date the builder declared, every extension since, the progress filings, the occupancy certificate, the complaint orders, and the promoter&#39;s other projects.</strong> Then compare it with two projects in the same corridor. The records are public. The intelligence isn’t.</p>
+        <div class="zseal" aria-label="GharGrades seal">
           <svg viewBox="0 0 160 160" width="128" height="128" role="img">
             <defs><path id="blrArc" d="M80,80 m-60,0 a60,60 0 1,1 120,0 a60,60 0 1,1 -120,0"/></defs>
             <circle cx="80" cy="80" r="77" fill="#FFFFFF" stroke="#E5E2D9" stroke-width="1.5"/>
@@ -320,16 +245,18 @@ ${ownNav(cfg)}
             <rect x="62" y="70" width="36" height="34" rx="1.5" fill="none" stroke="#14213D" stroke-width="3"/>
             <path d="M62 84h36M74 70v34M86 70v34" stroke="#14213D" stroke-width="1.6"/>
             <path d="M56 70L80 56L104 70" fill="none" stroke="#E9A825" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="80" y="115" text-anchor="middle" font-family="'IBM Plex Mono',ui-monospace,monospace" font-size="5.4" letter-spacing=".9" fill="#14213D" font-weight="600">${esc(B.short.toUpperCase())}</text>
+            <text x="80" y="115" text-anchor="middle" font-family="'IBM Plex Mono',ui-monospace,monospace" font-size="5.4" letter-spacing=".9" fill="#14213D" font-weight="600">GHARGRADES</text>
           </svg>
         </div>
-        <p style="font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;color:#8A90A3;margin-top:22px">K-RERA RECORD &middot; EVERY FACT SOURCED AND DATED &middot; ONE PROJECT, ONE REPORT &middot; ${esc(price)}</p>
+        <p style="font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;color:#8A90A3;margin-top:22px">K-RERA RECORD &middot; EVERY FACT SOURCED AND DATED &middot; ONE PROJECT, ONE REPORT &middot; ₹200</p>
       </div>
 
       <aside class="h2-news">
-        <p class="hn-head">Latest from the ${esc(INDIA.city)} record</p>
+        <p class="hn-head">Latest from the Bengaluru record</p>
         <div id="hnItems">
-${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}<small>${esc(s)}</small></span><span class="hn-arrow">&rsaquo;</span></a>`).join('\n')}
+          <a class="hn-item" href="#run"><span>Hebbal: a 203 unit project declared completion for 31 Dec 2025; an extension to 31 Dec 2026 is applied for and not yet on the certificate. Latest filing certifies 74 percent.<small>K-RERA record, captured 2026-09-25</small></span><span class="hn-arrow">&rsaquo;</span></a>
+          <a class="hn-item" href="#run"><span>Thanisandra: a 716 home block took one six month extension and received a partial occupancy certificate eleven days before the extended deadline.<small>BBMP partial OC 20 Jan 2026, captured 2026-09-25</small></span><span class="hn-arrow">&rsaquo;</span></a>
+          <a class="hn-item" href="#run"><span>Bagalur: full occupancy certificate on record since March 2024; the only extension on file is administrative, for conveyance after completion.<small>KIADB OC 12 Mar 2024, captured 2026-09-25</small></span><span class="hn-arrow">&rsaquo;</span></a>
         </div>
         <a class="hn-all" href="#layers">What the check reads</a>
       </aside>
@@ -348,7 +275,7 @@ ${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}
           <button class="zs-run" id="lkGo" type="button">Check the record</button>
         </div>
         <div class="lk" id="lkOut" aria-live="polite"></div>
-        <p class="zsearch-sub">Free: status, the original completion date, extensions on record. <a href="#pricing">The full report is ${esc(price)}</a> &middot; <a href="${R.report}/adarsh-crest?demo=1">See a sample report</a></p>
+        <p class="zsearch-sub">Free: status, the original completion date, extensions on record. <a href="#pricing">The full report is ₹200</a> &middot; <a href="/report/adarsh-crest?demo=1">See a sample report</a></p>
       </div>
     </div>
 
@@ -356,7 +283,7 @@ ${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}
       <div class="hs"><div class="hs-num">9</div><div class="hs-lbl">Record layers read<br>per project</div></div>
       <div class="hs"><div class="hs-num">2</div><div class="hs-lbl">Comparable projects in the<br>same corridor, scored the same way</div></div>
       <div class="hs"><div class="hs-num">1</div><div class="hs-lbl">Published formula behind<br>the Property Score</div></div>
-      <div class="hs"><div class="hs-num">${esc(price)}</div><div class="hs-lbl">One project, one report.<br>Lookup free.</div></div>
+      <div class="hs"><div class="hs-num">₹200</div><div class="hs-lbl">One project, one report.<br>Lookup free.</div></div>
     </div>
   </div>
 </header>
@@ -377,7 +304,7 @@ ${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}
       <div class="tier-box">
         <span class="eyebrow" style="margin-bottom:0">Free</span>
         <h3>Project lookup</h3>
-        <div class="price">${esc(INDIA.currency_symbol)}0</div>
+        <div class="price">₹0</div>
         <div class="per">Any project in the launch set &middot; no login</div>
         <ul>
           <li><span class="m">FREE</span><span><b>Registration status</b> as it stands on the record</span></li>
@@ -391,7 +318,7 @@ ${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}
       <div class="tier-box paid">
         <span class="eyebrow" style="margin-bottom:0">Full report</span>
         <h3>Property Intelligence Report</h3>
-        <div class="price">${esc(price)}</div>
+        <div class="price">₹200</div>
         <div class="per">One project &middot; delivered on WhatsApp and web &middot; Decision Agent included</div>
         <ul>
           <li><span class="m">01</span><span><b>Completion timeline</b>: original date, every extension, months requested, slip to today</span></li>
@@ -400,10 +327,10 @@ ${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}
           <li><span class="m">04</span><span><b>Occupancy and completion certificates</b> on record, full or partial, with conditions</span></li>
           <li><span class="m">05</span><span><b>Complaint orders</b> located, and the promoter group&#39;s other registrations</span></li>
           <li><span class="m">06</span><span><b>Two comparables</b> in the same corridor, scored the same way</span></li>
-          <li><span class="m">07</span><span><b>${esc(B.score_name)}</b> with its working shown, and the questions each finding supports</span></li>
+          <li><span class="m">07</span><span><b>GharGrades Property Score</b> with its working shown, and the questions each finding supports</span></li>
           <li><span class="m">08</span><span><b>Decision Agent</b>: ask the record anything, every answer cited</span></li>
         </ul>
-        <p style="margin-top:20px"><a class="btn btn-primary" href="${R.report}/adarsh-crest?demo=1">See the sample report</a></p>
+        <p style="margin-top:20px"><a class="btn btn-primary" href="/report/adarsh-crest?demo=1">See the sample report</a></p>
       </div>
     </div>
   </div>
@@ -425,7 +352,7 @@ ${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}
     <div class="agent-demo">
       <p class="ad-q">&ldquo;When was possession promised, and where does it stand?&rdquo;</p>
       <p class="ad-a">The registration declared completion by 31 December 2025. An application dated 31 December 2025 asks to extend it to 31 December 2026; the reviewed record shows the application, not an approval or a renewed certificate. The latest progress filing, for the quarter ending June 2026, certifies 74 percent completion. No occupancy certificate is on record. Nine months past the original date as of today.</p>
-      <p class="ad-src">SOURCE: K-RERA REGISTRATION RECORD AND Q1 FY2026-27 FILING &middot; CAPTURED ${esc(captured)} &middot; VERIFY LIVE AT ${esc(INDIA.portal_url.replace('https://', '').toUpperCase())}</p>
+      <p class="ad-src">SOURCE: K-RERA REGISTRATION RECORD AND Q1 FY2026-27 FILING &middot; CAPTURED 2026-09-25 &middot; VERIFY LIVE AT RERA.KARNATAKA.GOV.IN</p>
     </div>
   </div>
 </section>
@@ -463,7 +390,7 @@ ${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}
         <div><div class="v">12</div><div class="l">Months requested</div></div>
         <div><div class="v">9</div><div class="l">Months past the original date, no OC</div></div>
       </div>
-      <p class="ck-note">Every line above is a field on the K-RERA record, captured ${esc(captured)}, and the report links you to the live entry. The score at the end of a report is computed from these lines by a published formula and shown with its working, only inside your private report.</p>
+      <p class="ck-note">Every line above is a field on the K-RERA record, captured 2026-09-25, and the report links you to the live entry. The score at the end of a report is computed from these lines by a published formula and shown with its working, only inside your private report.</p>
     </div>
   </div>
 </section>
@@ -492,21 +419,21 @@ ${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}
 <section class="meth" id="score">
   <div class="container">
     <div class="section-head center">
-      <span class="eyebrow">The ${esc(B.score_name)}</span>
+      <span class="eyebrow">The GharGrades Property Score</span>
       <h2>One number. Every point shown.</h2>
       <p class="lead" style="margin:14px auto 0">Zero to one hundred, higher is stronger, computed by one published formula from the record and printed with the record line behind every point. The record is quoted alongside, so you can disagree with the formula and still use the facts.</p>
     </div>
     <div class="meth-steps">
-      <div class="mstep"><h4>Completion timeline &middot; ${WEIGHTS.timeline}</h4><p>Months past the original date without a certificate, extensions on record, applications not yet approved, deadlines already elapsed.</p></div>
-      <div class="mstep"><h4>Delivery certificates &middot; ${WEIGHTS.delivery}</h4><p>Full occupancy certificate, partial with conditions, or none, with the certified percentage where there is no certificate.</p></div>
-      <div class="mstep"><h4>Progress filings &middot; ${WEIGHTS.progress}</h4><p>Whether the quarterly filing is current, and the certified percentage against the original schedule.</p></div>
-      <div class="mstep"><h4>Complaints and promoter &middot; ${WEIGHTS.complaints + WEIGHTS.promoter}</h4><p>Complaint orders located, with the portal tab verified live lifting the ceiling; the promoter group&#39;s other registrations and their record.</p></div>
+      <div class="mstep"><h4>Completion timeline &middot; 30</h4><p>Months past the original date without a certificate, extensions on record, applications not yet approved, deadlines already elapsed.</p></div>
+      <div class="mstep"><h4>Delivery certificates &middot; 25</h4><p>Full occupancy certificate, partial with conditions, or none, with the certified percentage where there is no certificate.</p></div>
+      <div class="mstep"><h4>Progress filings &middot; 15</h4><p>Whether the quarterly filing is current, and the certified percentage against the original schedule.</p></div>
+      <div class="mstep"><h4>Complaints and promoter &middot; 30</h4><p>Complaint orders located, with the portal tab verified live lifting the ceiling; the promoter group&#39;s other registrations and their record.</p></div>
     </div>
     <div class="firewall reveal">
       <div class="fw-ic">&#128737;</div>
       <div>
         <h3>An opinion computed from the record, never a substitute for it</h3>
-        <p>The bands read ${BANDS.map(b => `${b.grade}: ${b.verdict}`).join(', ')}. No builder, promoter, agent or portal can pay to move a point. The score appears only inside your private report. Formula version ${esc(SCORE_VERSION)}.</p>
+        <p>The bands read A: Good record, B: Sound record, C: Watch, D: Investigate, E: Serious concerns on record. No builder, promoter, agent or portal can pay to move a point. The score appears only inside your private report. Formula version 2026.09-a.</p>
       </div>
     </div>
   </div>
@@ -527,7 +454,16 @@ ${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}
   <div class="container">
     <div class="section-head center"><span class="eyebrow">Questions</span><h2>Straight answers</h2></div>
     <div class="faq">
-${faq.map(([q, a]) => `      <details><summary>${esc(q)}</summary><div class="a">${esc(a)}</div></details>`).join('\n')}
+      <details><summary>Is this the K-RERA website?</summary><div class="a">No. K-RERA (https://rera.karnataka.gov.in) is the regulator and the only official record. GharGrades reads that public record, keeps every fact with its source and capture date, computes a published score from it, and lets you compare projects and ask the Decision Agent about what the record says. Every report tells you to verify the live entry on the portal, and links to it.</div></details>
+      <details><summary>What does the free lookup show?</summary><div class="a">Three fields from the registration record: current registration status, the original completion date the promoter declared, and how many completion extensions are on record. Nothing more, and nothing hidden: the full report is where the dates, filings, complaints, promoter history, comparables and the score live.</div></details>
+      <details><summary>What is in the ₹200 report?</summary><div class="a">The completion timeline in full (original date, every extension, months requested, how far past the original date the project is today), the registration record (promoter entity, units, area, declared cost, escrow bank, approvals on file), the latest quarterly progress filing, occupancy and completion certificates on record, complaint orders located, the promoter group&#39;s other registrations, two comparable projects in the same corridor with their own scores, the GharGrades Property Score with its working shown, the questions each finding supports, and the Decision Agent.</div></details>
+      <details><summary>What is the GharGrades Property Score?</summary><div class="a">A number from 0 to 100, higher is stronger, computed by one published formula from the record: completion timeline (30), delivery certificates (25), progress filings (15), complaint orders (15) and promoter record (15). The report shows every point and the record line behind it. The score is our opinion computed from the record; the record itself is quoted alongside so you can disagree with the formula and still use the facts.</div></details>
+      <details><summary>What is the Decision Agent?</summary><div class="a">A conversational layer inside your report that answers only from the record it was built on. Ask when possession was promised, what the extension says, whether an occupancy certificate exists, how the comparables differ. Every answer cites the source and the capture date. It compares records; it never tells you what to buy.</div></details>
+      <details><summary>Do you take money from builders or agents?</summary><div class="a">No. No builder, promoter, agent or portal can pay to be listed, scored, or left out. The report is paid for by the buyer and works for the buyer.</div></details>
+      <details><summary>How current is the record?</summary><div class="a">K-RERA filings move quarterly (progress reports) and on events (extensions, certificates, orders). Each fact in your report carries the date it was captured (launch set captured 2026-09-25). Screenshots of a report can go stale; the report itself tells you where to verify the live entry.</div></details>
+      <details><summary>What about plots and villas?</summary><div class="a">Plotted developments and villa projects are registered with K-RERA too, and the same record fields apply: completion dates, extensions, completion certificates, complaints. They are in scope. Khata, encumbrance and layout approval checks sit outside the K-RERA record and are noted as such.</div></details>
+      <details><summary>Which projects can I check today?</summary><div class="a">The launch set covers Bengaluru projects registered with K-RERA, loading corridor by corridor, north Bengaluru first. If your project is not in the set yet, the lookup tells you, and you can check the live entry on the portal while the crawl catches up.</div></details>
+      <details><summary>What is the Buyers Network?</summary><div class="a">The third layer: verified buyers of the same project, connected to each other, with no builders, agents or sellers in the room. It opens per project as members join, after the report. Entry is through a report; membership is pseudonymous and never published.</div></details>
     </div>
   </div>
 </section>
@@ -536,14 +472,28 @@ ${faq.map(([q, a]) => `      <details><summary>${esc(q)}</summary><div class="a"
 <section style="padding-top:0">
   <div class="cta-band">
     <h2>You found the project. Now read its record.</h2>
-    <p>Completion history, certificates, complaints and the promoter&#39;s track record for any K-RERA registered ${esc(INDIA.city)} project, before the booking amount, not after the keys.</p>
+    <p>Completion history, certificates, complaints and the promoter&#39;s track record for any K-RERA registered Bengaluru project, before the booking amount, not after the keys.</p>
     <a class="btn btn-lg" href="#f_project" onclick="document.getElementById('f_project').focus();return false;">Look up a project free</a>
   </div>
 </section>
 
 </div>
 
-${ownFooter(cfg)}
+<footer>
+  <div class="container">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="/">GharGrades</a>
+        <p>Property Intelligence for Bengaluru. The K-RERA record, read, scored and compared, before the decision.</p>
+        <div class="foot-badges"><span class="fbadge">100% PUBLIC RECORDS</span><span class="fbadge">EVERY FACT SOURCED AND DATED</span><span class="fbadge">NO BUILDER OR AGENT MONEY</span></div>
+      </div>
+      <div><h4>Product</h4><a href="#pricing">Free lookup and the report</a><a href="/report/adarsh-crest?demo=1">Sample report</a><a href="#score">How the score works</a></div>
+      <div><h4>The record</h4><a href="https://rera.karnataka.gov.in" rel="noopener">K-RERA portal</a><a href="#layers">The nine layers</a></div>
+      <div><h4>Company</h4><a href="mailto:hello@ghargrades.com">hello@ghargrades.com</a></div>
+    </div>
+    <div class="foot-legal"><span>&copy; 2026 GharGrades &middot; Independent by design.</span><span>GharGrades reads public records and computes an opinion score by a published formula; it does not certify project completion, title, or delivery. Verify every entry on rera.karnataka.gov.in.</span></div>
+  </div>
+</footer>
 <script src="/assets/app.js"></script>
 <script>
 // The check-run animation: play once when the section enters the viewport
@@ -560,7 +510,7 @@ ${ownFooter(cfg)}
 (function () {
   var inp = document.getElementById('f_project'), go = document.getElementById('lkGo'), out = document.getElementById('lkOut');
   if (!inp || !go || !out) return;
-  var API = ${JSON.stringify(R.api)}, REPORT = ${JSON.stringify(R.report)}, PORTAL = ${JSON.stringify(INDIA.portal_url)}, PRICE = ${JSON.stringify(price)};
+  var API = "/api", REPORT = "/report", PORTAL = "https://rera.karnataka.gov.in", PRICE = "₹200";
   function esc(t) { var d = document.createElement('div'); d.textContent = t || ''; return d.innerHTML; }
   function show(html) { out.classList.add('on'); out.innerHTML = html; }
   function fmt(iso) { if (!iso) return 'Not shown'; var d = new Date(iso + 'T00:00:00Z'); return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }); }
@@ -582,7 +532,7 @@ ${ownFooter(cfg)}
         + '<div class="lk-cell"><div class="lk-lbl">Original completion date</div><div class="lk-val">' + esc(fmt(p.original_completion)) + '</div><div class="lk-sub">As declared at registration</div></div>'
         + '<div class="lk-cell"><div class="lk-lbl">Extensions on record</div><div class="lk-val' + extCls + '">' + esc(String(p.extension_count)) + '</div><div class="lk-sub">' + (p.extension_count > 0 ? 'Dates, months and status are in the report' : 'None on the record captured') + '</div></div>'
         + '</div>'
-        + '<div class="lk-foot"><p>That is the free layer. The report reads the rest: every extension with its status, the latest progress filing, certificates, complaint orders, the promoter\\u2019s other projects, two comparables and the score, plus the Decision Agent.</p>'
+        + '<div class="lk-foot"><p>That is the free layer. The report reads the rest: every extension with its status, the latest progress filing, certificates, complaint orders, the promoter\u2019s other projects, two comparables and the score, plus the Decision Agent.</p>'
         + '<a class="btn btn-primary" href="' + REPORT + '/' + encodeURIComponent(p.slug) + '?demo=1">Open the full report, ' + esc(PRICE) + '</a></div>'
         + '<p class="lk-src">SOURCE: K-RERA REGISTRATION RECORD &middot; CAPTURED ' + esc(j.captured) + ' &middot; VERIFY LIVE AT ' + esc(PORTAL.replace('https://', '').toUpperCase()) + '</p>');
     } catch (e) { go.disabled = false; show('<p class="lk-miss">The lookup is unavailable right now. The record itself is unaffected: check the live entry at <a href="' + PORTAL + '" rel="noopener">' + esc(PORTAL.replace('https://', '')) + '</a>.</p>'); }
@@ -593,15 +543,4 @@ ${ownFooter(cfg)}
 })();
 </script>
 </body>
-</html>`;
-  return html;
-}
-
-/* ---------------- free lookup API ---------------- */
-export function lookupApi(req, res) {
-  const q = String(req.query.q || '').slice(0, 120);
-  const p = findProject(q);
-  if (!p) return res.json({ ok: false, query: q, message: 'Not in the launch set yet.' });
-  res.json({ ok: true, captured: getCaptured(), project: freeLookup(p) });
-}
-export function projectsApi(req, res) { res.json({ captured: getCaptured(), projects: listProjects() }); }
+</html>

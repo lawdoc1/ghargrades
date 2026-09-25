@@ -7,7 +7,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "PORT=4100 node server.js"
+    "dev": "PORT=4100 node server.js",
+    "generate": "node api/generate-pages.js"
   },
   "engines": { "node": ">=20" },
   "dependencies": {
