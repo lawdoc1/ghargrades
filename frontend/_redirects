@@ -1,0 +1,2 @@
+# Netlify is the front door for ghargrades.com; every path is served by the Railway service at api.ghargrades.com
+/*    https://api.ghargrades.com/:splat    200

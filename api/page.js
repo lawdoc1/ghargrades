@@ -1,0 +1,603 @@
+// page.js — the landing: hero with the free lookup pill and the record card, stat cards, free vs paid,
+// the three layers, the animated check run with the extension date line, the nine-layer ledger, the score,
+// FAQ, CTA. Palette: ledger indigo + marigold. All changeable values come from config.js.
+//
+// GET /                 -> landing (story + free lookup)
+// GET /api/lookup?q=    -> free lookup: status, original completion, extension count
+// GET /api/projects     -> launch set list (name, slug, rera_no, locality)
+
+import { INDIA, RUPEE, siteConfig } from './config.js';
+import { listProjects, findProject, freeLookup, getCaptured } from './projects.js';
+import { WEIGHTS, BANDS, SCORE_VERSION } from './score.js';
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------------- shared page css (landing + report reuse the tokens) ---------------- */
+export const BLR_CSS = `
+h1,h2,h3{text-wrap:balance}
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+@media(max-width:640px){h1{font-size:1.85rem!important;line-height:1.18!important}h2{font-size:1.4rem!important;line-height:1.22!important}.container{padding-left:18px!important;padding-right:18px!important}.lead{font-size:1rem!important}}
+/* ============ tokens: ledger indigo + marigold ============ */
+.blr{--k:#14213D;--k2:#0B1226;--mari:#E9A825;--mari2:#9B6A05;--mari-soft:#FBF1D6;--paper:#F8F6F0;--hair:#E5E2D9;--gy:#57607A;--gy2:#8A90A3;--ok:#1E8E5A}
+.nav .btn-primary{background:#14213D;border-color:#14213D;color:#fff;box-shadow:none}
+.nav .brand{white-space:nowrap}
+@media(max-width:640px){.nav .btn{padding:10px 14px;font-size:.86rem;white-space:nowrap}}
+.nav .btn-primary:hover{background:#0B1226}
+.blr .eyebrow{color:var(--k);letter-spacing:.18em}
+.blr .hl-underline{background:linear-gradient(180deg,transparent 62%,var(--mari-soft) 62%)}
+.blr .btn-primary{background:var(--k);border-color:var(--k);color:#fff;box-shadow:none}
+.blr .btn-primary:hover{background:var(--k2);box-shadow:none}
+.blr .btn-ghost{color:var(--k)}
+.btn::after{content:none!important}
+.blr .lead{color:var(--gy)}
+.blr .card .tag{color:var(--gy2)}
+.blr .card::before{background:var(--mari)}
+.blr .mstep::before{color:var(--mari2);background:var(--mari-soft);border-color:var(--mari-soft)}
+.blr .mstep h4{color:var(--k)}
+.blr .faq details[open]{border-color:var(--mari)}
+.blr .faq summary::after{color:var(--mari2)}
+/* ============ hero (index hero2 format) ============ */
+.hero2{padding:72px 0 60px!important;text-align:left!important;overflow:visible!important;background:#fff}
+.hero2::before,.hero2::after{content:none!important}
+.hero2 .container{max-width:1180px}
+.h2-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:48px;align-items:start}
+.h2-main{min-width:0}
+.h2-kicker{font-family:var(--mono);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gy2);margin:0 0 14px}
+.h2-title{font-size:clamp(2.1rem,4.4vw,3.4rem)!important;font-weight:800;line-height:1.08!important;letter-spacing:-.03em;margin:0 0 18px;text-align:left!important;max-width:620px;color:var(--k)}
+.h2-lead{font-size:1.05rem;line-height:1.7;color:var(--gy);margin:0 0 26px;max-width:560px;text-align:left!important}
+.h2-news{background:var(--k2);border-radius:20px;padding:24px 22px;box-shadow:0 18px 44px rgba(11,18,38,.18);min-width:0}
+.hn-head{font-family:var(--mono);font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;color:#9AA3BD;margin:0 0 10px;text-align:left}
+.hn-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #1E2A4A;color:#fff;text-decoration:none;font-weight:600;font-size:.9rem;line-height:1.45;text-align:left;transition:opacity .15s}
+.hn-item:hover{opacity:.72}
+.hn-item:last-child{border-bottom:none}
+.hn-item span:first-child{min-width:0}
+.hn-item small{display:block;font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;color:var(--mari);font-weight:500;margin-top:4px}
+.hn-arrow{flex:none;opacity:.5}
+.hn-all{display:inline-block;margin-top:12px;color:#fff;text-decoration:underline;text-underline-offset:3px;font-weight:600;font-size:.84rem}
+.h2-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:52px}
+.hs{position:relative;background:#fff;border:1px solid var(--hair);border-radius:16px;padding:22px 20px 20px;min-width:0;overflow:hidden;box-shadow:0 2px 10px rgba(11,18,38,.03)}
+.hs::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--mari)}
+.hs-num{font-size:2.1rem;font-weight:800;color:var(--k);letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+.hs-lbl{font-size:.78rem;color:var(--gy);margin-top:8px;line-height:1.5}
+@media(max-width:920px){.h2-grid{grid-template-columns:1fr;gap:30px}.h2-title,.h2-lead{max-width:100%}}
+@media(max-width:640px){.hero2{padding:36px 0 40px!important}.h2-title{font-size:clamp(1.6rem,7.2vw,2.1rem)!important;margin-bottom:14px}.h2-lead{font-size:.96rem;margin-bottom:20px}.h2-news{padding:18px 16px;border-radius:16px}.hn-item{font-size:.86rem;padding:11px 0}.h2-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:32px}.hs{padding:16px 14px 14px;border-radius:13px}.hs-num{font-size:1.5rem}.hs-lbl{font-size:.7rem}}
+/* ============ project pill (index search bar format) ============ */
+.h2-search-row{margin-top:44px;display:flex;justify-content:center;position:relative;z-index:500}
+.h2-search-row .zsearch{width:100%;max-width:800px;text-align:center}
+.zsearch{position:relative}
+.zsearch-bar{display:flex;align-items:center;background:#fff;border:1.5px solid var(--k);border-radius:999px;box-shadow:0 2px 6px rgba(11,18,38,.05),0 14px 34px rgba(11,18,38,.08);padding:6px 8px 6px 6px;transition:box-shadow .25s}
+.zsearch-bar:focus-within{box-shadow:0 0 0 3px var(--mari-soft),0 16px 40px rgba(11,18,38,.16)}
+.zs-cat-btn{display:flex;align-items:center;gap:8px;border:none;background:var(--paper);border-radius:999px;padding:12px 18px;font-family:var(--font);font-size:.92rem;font-weight:700;color:var(--k);cursor:default;white-space:nowrap}
+.zs-divider{width:1px;height:26px;background:var(--hair);margin:0 4px 0 12px;flex:none}
+.zs-search-ic{opacity:.45;flex:none;margin:0 4px 0 8px;color:var(--k)}
+.zs-input-wrap{flex:1;position:relative;display:flex;align-items:center}
+.zsearch-bar input{width:100%;border:none;outline:none;padding:13px 12px 13px 4px;font-family:var(--font);font-size:1.02rem;font-weight:450;background:transparent;color:var(--k);letter-spacing:-.01em}
+.zs-run{flex:none;border:none;background:var(--k);color:#fff;font-family:var(--font);font-weight:700;font-size:.92rem;padding:12px 22px;border-radius:999px;cursor:pointer;margin-left:6px;transition:background .2s;white-space:nowrap}
+.zs-run:hover{background:var(--k2)}
+.zs-run:disabled{opacity:.6;cursor:default}
+.zsearch-sub{margin-top:16px;font-size:.9rem;color:var(--gy)}
+.zsearch-sub a{color:var(--k);text-decoration:underline;text-underline-offset:3px;font-weight:500}
+@media(max-width:640px){.h2-search-row{margin-top:30px}.zsearch-bar{flex-wrap:wrap;border-radius:20px;padding:8px;gap:6px}.zs-cat-btn{width:100%;justify-content:center}.zs-divider{display:none}.zs-input-wrap{width:calc(100% - 30px)}.zs-run{width:100%;margin-left:0;padding:13px}}
+/* free lookup result card */
+.lk{display:none;text-align:left;margin:18px auto 0;max-width:800px;background:#fff;border:2px solid var(--k);border-radius:20px;padding:22px 24px;box-shadow:6px 6px 0 var(--mari-soft)}
+.lk.on{display:block}
+.lk-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap}
+.lk-name{font-weight:800;font-size:1.25rem;letter-spacing:-.01em;color:var(--k)}
+.lk-rera{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;color:var(--gy2)}
+.lk-rows{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
+@media(max-width:640px){.lk-rows{grid-template-columns:1fr}}
+.lk-cell{border-top:2px solid var(--k);padding-top:10px}
+.lk-lbl{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gy2)}
+.lk-val{font-weight:800;font-size:1.2rem;color:var(--k);margin-top:4px;letter-spacing:-.01em}
+.lk-val.warn{color:var(--mari2)}
+.lk-sub{font-size:.8rem;color:var(--gy);margin-top:3px}
+.lk-foot{margin-top:18px;padding-top:14px;border-top:1px dashed var(--hair);display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.lk-foot p{margin:0;font-size:.9rem;color:var(--gy);max-width:520px}
+.lk-src{font-family:var(--mono);font-size:.58rem;letter-spacing:.12em;color:var(--gy2);margin-top:12px}
+.lk-miss{font-size:.95rem;color:var(--k);line-height:1.6}
+/* ============ seal ============ */
+.zseal{margin-top:24px}
+.zseal-spin{transform-origin:80px 80px;animation:zsealspin 40s linear infinite}
+@keyframes zsealspin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.zseal-spin{animation:none}}
+@media(max-width:640px){.zseal svg{width:104px;height:104px}}
+/* ============ the difference: free vs paid ============ */
+.marq{overflow:hidden;background:var(--k2);border-radius:14px;margin:26px 0 30px}
+.marq-track{display:flex;gap:0;white-space:nowrap;animation:marqmove 34s linear infinite;will-change:transform}
+.marq-track span{font-family:var(--mono);font-size:.72rem;letter-spacing:.22em;color:#fff;padding:13px 0}
+.marq-track b{color:var(--mari);padding:13px 18px;font-weight:400}
+@keyframes marqmove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){.marq-track{animation:none}}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:stretch}
+@media(max-width:900px){.twocol{grid-template-columns:1fr}}
+.tier-box{border:2px solid var(--hair);border-radius:20px;padding:28px 28px 24px;background:#fff}
+.tier-box.paid{border-color:var(--k);box-shadow:6px 6px 0 var(--mari-soft)}
+.tier-box h3{color:var(--k);font-size:1.25rem;margin:6px 0 4px;letter-spacing:-.01em}
+.tier-box .price{font-size:2.2rem;font-weight:800;color:var(--k);letter-spacing:-.02em;line-height:1;margin:14px 0 4px}
+.tier-box .per{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gy2)}
+.tier-box ul{list-style:none;padding:0;margin:18px 0 0}
+.tier-box li{padding:9px 0;border-top:1px solid var(--hair);font-size:.94rem;color:var(--gy);display:flex;gap:10px;align-items:flex-start}
+.tier-box li b{color:var(--k);font-weight:700}
+.tier-box li .m{flex:none;font-family:var(--mono);font-size:.62rem;letter-spacing:.12em;color:var(--mari2);margin-top:5px;min-width:44px}
+.tier-box li.x{color:var(--gy2)}
+.tier-box li.x .m{color:var(--gy2)}
+/* ============ THE CHECK, RUNNING (dark, animated) ============ */
+.ck{background:var(--k2);color:#fff;padding:100px 0}
+.ck .container{max-width:880px}
+.ck-eyebrow{font-family:var(--mono);font-size:.66rem;letter-spacing:.2em;text-transform:uppercase;color:#9AA3BD;margin:0 0 12px}
+.ck h2{color:#fff;font-size:clamp(1.6rem,3vw,2.3rem);font-weight:800;letter-spacing:-.02em;margin:0 0 8px}
+.ck-sub{color:#9AA3BD;font-size:.98rem;margin:0 0 42px;max-width:560px}
+.ck-addr-wrap{font-family:var(--mono);font-size:clamp(.82rem,2vw,1.15rem);letter-spacing:.04em;margin-bottom:26px;min-height:1.6em}
+.ck-addr{display:inline-block;border-right:2px solid var(--mari);white-space:nowrap;overflow:hidden;width:0;vertical-align:bottom}
+.run .ck-addr{animation:cktype 2.1s steps(50,end) forwards,ckcaret .8s step-end infinite}
+@keyframes cktype{to{width:50ch}}
+@media(max-width:700px){.ck-addr,.run .ck-addr{animation:none;width:auto;white-space:normal;border-right:none;overflow:visible}}
+@keyframes ckcaret{50%{border-color:transparent}}
+.ck-row{display:flex;align-items:baseline;gap:14px;font-family:var(--mono);font-size:.8rem;letter-spacing:.05em;padding:12px 0;border-bottom:1px solid #1E2A4A;opacity:0;transform:translateY(8px)}
+.ck-row .n{color:#5B6788;flex:none}
+.ck-row .src{color:#9AA3BD;flex:none;display:none}
+.ck-dots{flex:1;border-bottom:1px dotted #2C3A5E;transform:translateY(-4px)}
+.ck-row .st{color:#fff;flex:none;font-weight:600}
+.ck-row .st.hit{color:var(--mari)}
+@media(min-width:700px){.ck-row .src{display:inline}}
+.run .ck-row{animation:ckrow .5s ease forwards}
+.run .ck-row:nth-of-type(1){animation-delay:2.1s}.run .ck-row:nth-of-type(2){animation-delay:2.45s}.run .ck-row:nth-of-type(3){animation-delay:2.8s}.run .ck-row:nth-of-type(4){animation-delay:3.15s}.run .ck-row:nth-of-type(5){animation-delay:3.5s}.run .ck-row:nth-of-type(6){animation-delay:3.85s}.run .ck-row:nth-of-type(7){animation-delay:4.2s}.run .ck-row:nth-of-type(8){animation-delay:4.55s}.run .ck-row:nth-of-type(9){animation-delay:4.9s}
+@keyframes ckrow{to{opacity:1;transform:none}}
+/* the date line: promised, extended, today */
+.dl{opacity:0;margin-top:40px}
+.run .dl{animation:ckrow .6s ease forwards;animation-delay:5.4s}
+.dl-title{font-family:var(--mono);font-size:.7rem;letter-spacing:.16em;color:#9AA3BD;text-transform:uppercase;margin:0 0 18px}
+.dl-track{position:relative;height:6px;background:#22305A;border-radius:3px;margin:96px 8px 58px}
+.dl-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--mari);border-radius:3px}
+.run .dl-fill{animation:dlfill 1.6s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:6s}
+@keyframes dlfill{to{width:var(--w)}}
+.dl-pt{position:absolute;top:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:var(--k2);border:3px solid #fff}
+.dl-pt.mari{border-color:var(--mari);background:var(--mari)}
+.dl-pt.hollow{background:var(--k2);border-color:var(--mari);border-style:dashed}
+.dl-lbl{position:absolute;transform:translateX(-50%);text-align:center;font-family:var(--mono);font-size:.62rem;letter-spacing:.08em;color:#C9D0E4;white-space:nowrap}
+.dl-lbl b{display:block;color:#fff;font-size:.78rem;letter-spacing:.02em;margin-bottom:3px}
+.dl-lbl.up{bottom:22px}.dl-lbl.dn{top:22px}.dl-lbl.up2{bottom:58px}.dl-lbl.dn2{top:58px}
+.dl-lbl.first{transform:none;text-align:left}.dl-lbl.last{transform:translateX(-100%);text-align:right}
+.dl-legend{display:none;list-style:none;padding:0;margin:0 0 10px}
+.dl-legend li{display:flex;align-items:center;gap:8px;font-size:.82rem;color:#fff;padding:5px 0;font-weight:600}
+.dl-legend li span{color:#9AA3BD;font-family:var(--mono);font-size:.68rem;font-weight:400}
+.dl-legend i{width:10px;height:10px;border-radius:50%;border:2px solid #fff;background:var(--k2);flex:none}
+.dl-legend i.mari{border-color:var(--mari);background:var(--mari)}.dl-legend i.hollow{border-color:var(--mari);border-style:dashed}
+@media(max-width:700px){.dl-lbl{display:none}.dl-track{margin:18px 6px 22px}.dl-legend{display:block}}
+.dl-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px}
+.dl-sum div{border-top:1px solid #2C3A5E;padding-top:10px}
+.dl-sum .v{font-size:1.5rem;font-weight:800;color:var(--mari);letter-spacing:-.02em;line-height:1}
+.dl-sum .l{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;color:#9AA3BD;text-transform:uppercase;margin-top:6px}
+.ck-note{color:#9AA3BD;font-size:.86rem;margin-top:26px;max-width:600px}
+@media(prefers-reduced-motion:reduce){.run .ck-addr{animation:none;width:44ch}.run .ck-row,.run .dl{animation:none;opacity:1;transform:none}.run .dl-fill{animation:none;width:var(--w)}}
+/* ============ layers ledger ============ */
+.ledger{border-top:2px solid var(--k)}
+.led-row{display:grid;grid-template-columns:64px 1.1fr 1fr;gap:18px;padding:18px 0;border-bottom:1px solid var(--hair);align-items:baseline}
+.led-row .no{font-family:var(--mono);font-size:.78rem;color:var(--gy2);letter-spacing:.08em}
+.led-row .what{font-weight:700;color:var(--k);font-size:.98rem;letter-spacing:-.01em}
+.led-row .what span{display:block;font-weight:400;color:var(--gy);font-size:.88rem;margin-top:3px;letter-spacing:0}
+.led-row .src{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gy2);text-align:right}
+@media(max-width:700px){.led-row{grid-template-columns:44px 1fr}.led-row .src{grid-column:2;text-align:left;margin-top:2px}}
+/* ============ three layers ============ */
+.stack{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:2px solid var(--k);border-left:1px solid var(--hair);margin-top:34px}
+.stack-cell{padding:30px 28px;border-right:1px solid var(--hair);border-bottom:1px solid var(--hair);position:relative}
+.stack-cell .tagline{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mari2)}
+.stack-cell h3{color:var(--k);font-size:1.12rem;margin:10px 0 8px;letter-spacing:-.01em}
+.stack-cell p{color:var(--gy);font-size:.93rem;line-height:1.65;margin:0}
+.stack-cell .soon{display:inline-block;margin-top:12px;font-family:var(--mono);font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gy2);border:1px solid var(--hair);border-radius:4px;padding:3px 7px}
+@media(max-width:820px){.stack{grid-template-columns:1fr}}
+/* agent demo strip */
+.agent-demo{background:var(--paper);border:1px solid var(--hair);border-radius:20px;padding:26px 26px 22px;margin-top:30px}
+.ad-q{font-weight:700;color:var(--k);font-size:.98rem}
+.ad-a{margin-top:8px;font-size:.95rem;color:var(--gy);line-height:1.65;border-left:3px solid var(--mari);padding-left:14px}
+.ad-src{font-family:var(--mono);font-size:.58rem;letter-spacing:.12em;color:var(--gy2);margin-top:8px;padding-left:17px}
+/* ============ dark bands ============ */
+.blr .firewall{background:var(--k2)}
+.blr .firewall::before{background:radial-gradient(400px 200px at 90% 0%,rgba(233,168,37,.18),transparent 60%)}
+.blr .firewall .fw-ic{background:rgba(233,168,37,.16);color:var(--mari)}
+.blr .cta-band{background:var(--k2)}
+.blr .cta-band::before,.blr .cta-band::after{content:none}
+.blr .cta-band p{color:#C9D0E4}
+.blr .cta-band .btn{background:var(--mari);color:var(--k2);border-color:var(--mari)}
+.blr .cta-band .btn:hover{background:#F2BC44}
+/* ============ dark footer (site structure) ============ */
+footer{background:var(--k2,#0B1226)!important;border-top:1px solid #1E2A4A!important;color:#C9D0E4!important}
+footer .brand,footer .brand small{color:#fff!important}
+footer .brand .mark{filter:brightness(0) invert(1)}
+footer p{color:#9AA3BD!important}
+footer h4{color:#9AA3BD!important}
+footer a{color:#C9D0E4!important}
+footer a:hover{color:#fff!important}
+footer .fbadge{border-color:#2C3A5E!important;color:#C9D0E4!important;background:transparent!important}
+footer .foot-legal,footer .foot-legal span{color:#9AA3BD!important;border-color:#1E2A4A!important}
+`;
+
+/* ---------------- site chrome: own nav and footer ---------------- */
+export function ownNav(cfg) {
+  return `<nav class="nav"><div class="container nav-inner">
+  <a class="brand" href="${cfg.routes.page}"><svg class="mark" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="3" y="9" width="20" height="14" rx="2" fill="none" stroke="#14213D" stroke-width="2.4"/><path d="M2 10 L13 3 L24 10" fill="none" stroke="#E9A825" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg> ${esc(cfg.brand.name)}</a>
+  <div class="nav-links"><a href="#pricing">Free lookup</a><a href="#score">The score</a><a href="#layers">What we read</a><a href="${cfg.routes.report}/adarsh-crest?demo=1">Sample report</a><a class="btn btn-primary" href="#f_project" onclick="document.getElementById('f_project').focus();return false;">Look up a project</a></div>
+</div></nav>`;
+}
+export function ownFooter(cfg) {
+  return `<footer>
+  <div class="container">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="${cfg.routes.page}">${esc(cfg.brand.name)}</a>
+        <p>Property Intelligence for ${esc(INDIA.city)}. The K-RERA record, read, scored and compared, before the decision.</p>
+        <div class="foot-badges"><span class="fbadge">100% PUBLIC RECORDS</span><span class="fbadge">EVERY FACT SOURCED AND DATED</span><span class="fbadge">NO BUILDER OR AGENT MONEY</span></div>
+      </div>
+      <div><h4>Product</h4><a href="#pricing">Free lookup and the report</a><a href="${cfg.routes.report}/adarsh-crest?demo=1">Sample report</a><a href="#score">How the score works</a></div>
+      <div><h4>The record</h4><a href="${INDIA.portal_url}" rel="noopener">K-RERA portal</a><a href="#layers">The nine layers</a></div>
+      <div><h4>Company</h4><a href="mailto:${esc(cfg.contact_email)}">${esc(cfg.contact_email)}</a></div>
+    </div>
+    <div class="foot-legal"><span>&copy; 2026 ${esc(cfg.brand.copyright)} &middot; Independent by design.</span><span>${esc(cfg.brand.name)} reads public records and computes an opinion score by a published formula; it does not certify project completion, title, or delivery. Verify every entry on ${esc(INDIA.portal_url.replace('https://', ''))}.</span></div>
+  </div>
+</footer>`;
+}
+
+/* ---------------- landing page ---------------- */
+export async function bangalorePage(req, res) {
+  const cfg = siteConfig(req); const B = cfg.brand, R = cfg.routes, SITE_URL = cfg.site_url;
+  const price = RUPEE(INDIA.report_price_inr);
+  const captured = getCaptured();
+  const faq = [
+    ['Is this the K-RERA website?', `No. K-RERA (${INDIA.portal_url}) is the regulator and the only official record. ${B.name} reads that public record, keeps every fact with its source and capture date, computes a published score from it, and lets you compare projects and ask the Decision Agent about what the record says. Every report tells you to verify the live entry on the portal, and links to it.`],
+    ['What does the free lookup show?', 'Three fields from the registration record: current registration status, the original completion date the promoter declared, and how many completion extensions are on record. Nothing more, and nothing hidden: the full report is where the dates, filings, complaints, promoter history, comparables and the score live.'],
+    [`What is in the ${price} report?`, `The completion timeline in full (original date, every extension, months requested, how far past the original date the project is today), the registration record (promoter entity, units, area, declared cost, escrow bank, approvals on file), the latest quarterly progress filing, occupancy and completion certificates on record, complaint orders located, the promoter group's other registrations, two comparable projects in the same corridor with their own scores, the ${B.score_name} with its working shown, the questions each finding supports, and the Decision Agent.`],
+    [`What is the ${B.score_name}?`, `A number from 0 to 100, higher is stronger, computed by one published formula from the record: completion timeline (${WEIGHTS.timeline}), delivery certificates (${WEIGHTS.delivery}), progress filings (${WEIGHTS.progress}), complaint orders (${WEIGHTS.complaints}) and promoter record (${WEIGHTS.promoter}). The report shows every point and the record line behind it. The score is our opinion computed from the record; the record itself is quoted alongside so you can disagree with the formula and still use the facts.`],
+    ['What is the Decision Agent?', 'A conversational layer inside your report that answers only from the record it was built on. Ask when possession was promised, what the extension says, whether an occupancy certificate exists, how the comparables differ. Every answer cites the source and the capture date. It compares records; it never tells you what to buy.'],
+    ['Do you take money from builders or agents?', 'No. No builder, promoter, agent or portal can pay to be listed, scored, or left out. The report is paid for by the buyer and works for the buyer.'],
+    ['How current is the record?', `K-RERA filings move quarterly (progress reports) and on events (extensions, certificates, orders). Each fact in your report carries the date it was captured (launch set captured ${captured}). Screenshots of a report can go stale; the report itself tells you where to verify the live entry.`],
+    ['What about plots and villas?', 'Plotted developments and villa projects are registered with K-RERA too, and the same record fields apply: completion dates, extensions, completion certificates, complaints. They are in scope. Khata, encumbrance and layout approval checks sit outside the K-RERA record and are noted as such.'],
+    ['Which projects can I check today?', `The launch set covers Bengaluru projects registered with K-RERA, loading corridor by corridor, north Bengaluru first. If your project is not in the set yet, the lookup tells you, and you can check the live entry on the portal while the crawl catches up.`],
+    ['What is the Buyers Network?', 'The third layer: verified buyers of the same project, connected to each other, with no builders, agents or sellers in the room. It opens per project as members join, after the report. Entry is through a report; membership is pseudonymous and never published.'],
+  ];
+  const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
+  const productLd = { '@context': 'https://schema.org', '@type': 'Product', name: `${B.name} Property Intelligence Report`, brand: { '@type': 'Brand', name: B.name },
+    description: `K-RERA record check on any registered ${INDIA.city} project before you book: completion date history and extensions, progress filings, occupancy certificates, complaint orders, promoter record, two comparable projects, the ${B.score_name} and a Decision Agent that answers from the record.`,
+    offers: { '@type': 'Offer', price: String(INDIA.report_price_inr), priceCurrency: 'INR', availability: 'https://schema.org/InStock', url: `${SITE_URL}${R.page}` } };
+  const crumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: B.name, item: SITE_URL }] };
+
+  // "Latest from the record": three record lines from the launch set (record level, sourced, dated)
+  const news = [
+    ['Hebbal: a 203 unit project declared completion for 31 Dec 2025; an extension to 31 Dec 2026 is applied for and not yet on the certificate. Latest filing certifies 74 percent.', `K-RERA record, captured ${captured}`],
+    ['Thanisandra: a 716 home block took one six month extension and received a partial occupancy certificate eleven days before the extended deadline.', `BBMP partial OC 20 Jan 2026, captured ${captured}`],
+    ['Bagalur: full occupancy certificate on record since March 2024; the only extension on file is administrative, for conveyance after completion.', `KIADB OC 12 Mar 2024, captured ${captured}`],
+  ];
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(INDIA.city_alt)} Property Intelligence | ${esc(B.name)}: check the K-RERA record before you book</title>
+<meta name="description" content="Check any K-RERA registered ${esc(INDIA.city)} project before you book: completion date history and extensions, progress filings, occupancy certificates, complaint orders, promoter record, comparable projects, the ${esc(B.score_name)} and a Decision Agent. Free lookup, full report ${esc(price)}.">
+<link rel="canonical" href="${SITE_URL}${R.page}">
+${cfg.public ? '' : '<meta name="robots" content="noindex,nofollow">'}
+<meta property="og:type" content="website"><meta property="og:site_name" content="${esc(B.name)}">
+<meta property="og:title" content="${esc(INDIA.h1)} | ${esc(B.name)}">
+<meta property="og:description" content="${esc(INDIA.tagline)} K-RERA completion history, extensions, certificates, complaints and promoter record for any registered ${esc(INDIA.city)} project. Free lookup, full report ${esc(price)}.">
+<meta property="og:url" content="${SITE_URL}${R.page}">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css">
+<script type="application/ld+json">${JSON.stringify(productLd)}</script>
+<script type="application/ld+json">${JSON.stringify(faqLd)}</script>
+<script type="application/ld+json">${JSON.stringify(crumbLd)}</script>
+<style>${BLR_CSS}</style>
+</head>
+<body>
+
+${ownNav(cfg)}
+
+<div class="blr">
+
+<!-- ============ HERO ============ -->
+<header class="hero hero2">
+  <div class="container">
+    <div class="h2-grid">
+
+      <div class="h2-main">
+        <span class="eyebrow">${esc(B.name)} &middot; Property Intelligence &middot; No builder or agent money</span>
+        <p class="h2-kicker">Property Intelligence &middot; Decision Agent &middot; Buyers Network</p>
+        <h1 class="h2-title">Every project has a record. <span class="hl-underline">Check before you book.</span></h1>
+        <p class="h2-lead">Before you pay a booking amount on a ${esc(INDIA.city)} project, read what the K-RERA record says about it: <strong>the completion date the builder declared, every extension since, the progress filings, the occupancy certificate, the complaint orders, and the promoter&#39;s other projects.</strong> Then compare it with two projects in the same corridor. ${esc(INDIA.tagline)}</p>
+        <div class="zseal" aria-label="${esc(B.name)} seal">
+          <svg viewBox="0 0 160 160" width="128" height="128" role="img">
+            <defs><path id="blrArc" d="M80,80 m-60,0 a60,60 0 1,1 120,0 a60,60 0 1,1 -120,0"/></defs>
+            <circle cx="80" cy="80" r="77" fill="#FFFFFF" stroke="#E5E2D9" stroke-width="1.5"/>
+            <circle cx="80" cy="80" r="70" fill="none" stroke="#14213D" stroke-width="1" opacity=".25"/>
+            <g class="zseal-spin"><text font-family="'IBM Plex Mono',ui-monospace,monospace" font-size="9.2" letter-spacing="2.4" fill="#14213D" font-weight="600"><textPath href="#blrArc">THE RECORDS ARE PUBLIC &middot; THE INTELLIGENCE ISN&#8217;T &middot;&#160;</textPath></text></g>
+            <circle cx="80" cy="80" r="45" fill="#fff" stroke="#14213D" stroke-width="1.5"/>
+            <rect x="62" y="70" width="36" height="34" rx="1.5" fill="none" stroke="#14213D" stroke-width="3"/>
+            <path d="M62 84h36M74 70v34M86 70v34" stroke="#14213D" stroke-width="1.6"/>
+            <path d="M56 70L80 56L104 70" fill="none" stroke="#E9A825" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="80" y="115" text-anchor="middle" font-family="'IBM Plex Mono',ui-monospace,monospace" font-size="5.4" letter-spacing=".9" fill="#14213D" font-weight="600">${esc(B.short.toUpperCase())}</text>
+          </svg>
+        </div>
+        <p style="font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;color:#8A90A3;margin-top:22px">K-RERA RECORD &middot; EVERY FACT SOURCED AND DATED &middot; ONE PROJECT, ONE REPORT &middot; ${esc(price)}</p>
+      </div>
+
+      <aside class="h2-news">
+        <p class="hn-head">Latest from the ${esc(INDIA.city)} record</p>
+        <div id="hnItems">
+${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}<small>${esc(s)}</small></span><span class="hn-arrow">&rsaquo;</span></a>`).join('\n')}
+        </div>
+        <a class="hn-all" href="#layers">What the check reads</a>
+      </aside>
+
+    </div>
+
+    <div class="h2-search-row">
+      <div class="zsearch">
+        <div class="zsearch-bar">
+          <span class="zs-cat-btn">&#127970; Project lookup, free</span>
+          <div class="zs-divider"></div>
+          <svg class="zs-search-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <div class="zs-input-wrap">
+            <input id="f_project" type="text" placeholder="Project name or K-RERA number, e.g. Adarsh Crest" autocomplete="off" spellcheck="false" aria-label="Project name or K-RERA registration number">
+          </div>
+          <button class="zs-run" id="lkGo" type="button">Check the record</button>
+        </div>
+        <div class="lk" id="lkOut" aria-live="polite"></div>
+        <p class="zsearch-sub">Free: status, the original completion date, extensions on record. <a href="#pricing">The full report is ${esc(price)}</a> &middot; <a href="${R.report}/adarsh-crest?demo=1">See a sample report</a></p>
+      </div>
+    </div>
+
+    <div class="h2-stats">
+      <div class="hs"><div class="hs-num">9</div><div class="hs-lbl">Record layers read<br>per project</div></div>
+      <div class="hs"><div class="hs-num">2</div><div class="hs-lbl">Comparable projects in the<br>same corridor, scored the same way</div></div>
+      <div class="hs"><div class="hs-num">1</div><div class="hs-lbl">Published formula behind<br>the Property Score</div></div>
+      <div class="hs"><div class="hs-num">${esc(price)}</div><div class="hs-lbl">One project, one report.<br>Lookup free.</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ FREE VS PAID ============ -->
+<section id="pricing" style="padding-top:56px">
+  <div class="container">
+    <div class="section-head center">
+      <span class="eyebrow">Free lookup &middot; Full report</span>
+      <h2 style="margin-top:8px">What the builder shows you, and what the record shows</h2>
+      <p class="lead" style="margin:12px auto 0;max-width:640px">A sales office shows the brochure and one possession date. The K-RERA record shows the date that was filed, every extension since, the certified progress, and the complaints. The free lookup opens the door; the report walks you through the file.</p>
+    </div>
+    <div class="marq" aria-hidden="true"><div class="marq-track">
+      <span>WHAT WE READ</span><b>&#10022;</b><span>ORIGINAL COMPLETION DATE</span><b>&#10022;</b><span>EVERY EXTENSION SINCE</span><b>&#10022;</b><span>QUARTERLY PROGRESS FILINGS</span><b>&#10022;</b><span>OCCUPANCY CERTIFICATE</span><b>&#10022;</b><span>COMPLAINT ORDERS</span><b>&#10022;</b><span>PROMOTER&#39;S OTHER PROJECTS</span><b>&#10022;</b><span>ESCROW AND DECLARED COST</span><b>&#10022;</b><span>APPROVALS ON FILE</span><b>&#10022;</b><span>TWO COMPARABLES</span><b>&#10022;</b>
+      <span>WHAT WE READ</span><b>&#10022;</b><span>ORIGINAL COMPLETION DATE</span><b>&#10022;</b><span>EVERY EXTENSION SINCE</span><b>&#10022;</b><span>QUARTERLY PROGRESS FILINGS</span><b>&#10022;</b><span>OCCUPANCY CERTIFICATE</span><b>&#10022;</b><span>COMPLAINT ORDERS</span><b>&#10022;</b><span>PROMOTER&#39;S OTHER PROJECTS</span><b>&#10022;</b><span>ESCROW AND DECLARED COST</span><b>&#10022;</b><span>APPROVALS ON FILE</span><b>&#10022;</b><span>TWO COMPARABLES</span><b>&#10022;</b>
+    </div></div>
+    <div class="twocol">
+      <div class="tier-box">
+        <span class="eyebrow" style="margin-bottom:0">Free</span>
+        <h3>Project lookup</h3>
+        <div class="price">${esc(INDIA.currency_symbol)}0</div>
+        <div class="per">Any project in the launch set &middot; no login</div>
+        <ul>
+          <li><span class="m">FREE</span><span><b>Registration status</b> as it stands on the record</span></li>
+          <li><span class="m">FREE</span><span><b>Original completion date</b> the promoter declared</span></li>
+          <li><span class="m">FREE</span><span><b>Extensions on record</b>, the count</span></li>
+          <li class="x"><span class="m">REPORT</span><span>The dates, months and status of each extension</span></li>
+          <li class="x"><span class="m">REPORT</span><span>Progress filings, certificates, complaints, promoter record, comparables, score, Decision Agent</span></li>
+        </ul>
+        <p style="margin-top:20px"><a class="btn btn-ghost" href="#f_project" onclick="document.getElementById('f_project').focus();return false;">Look up a project</a></p>
+      </div>
+      <div class="tier-box paid">
+        <span class="eyebrow" style="margin-bottom:0">Full report</span>
+        <h3>Property Intelligence Report</h3>
+        <div class="price">${esc(price)}</div>
+        <div class="per">One project &middot; delivered on WhatsApp and web &middot; Decision Agent included</div>
+        <ul>
+          <li><span class="m">01</span><span><b>Completion timeline</b>: original date, every extension, months requested, slip to today</span></li>
+          <li><span class="m">02</span><span><b>Registration record</b>: promoter entity, units, area, declared cost, escrow bank, approvals on file</span></li>
+          <li><span class="m">03</span><span><b>Latest progress filing</b> and how it compares to the schedule</span></li>
+          <li><span class="m">04</span><span><b>Occupancy and completion certificates</b> on record, full or partial, with conditions</span></li>
+          <li><span class="m">05</span><span><b>Complaint orders</b> located, and the promoter group&#39;s other registrations</span></li>
+          <li><span class="m">06</span><span><b>Two comparables</b> in the same corridor, scored the same way</span></li>
+          <li><span class="m">07</span><span><b>${esc(B.score_name)}</b> with its working shown, and the questions each finding supports</span></li>
+          <li><span class="m">08</span><span><b>Decision Agent</b>: ask the record anything, every answer cited</span></li>
+        </ul>
+        <p style="margin-top:20px"><a class="btn btn-primary" href="${R.report}/adarsh-crest?demo=1">See the sample report</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ THE THREE LAYERS ============ -->
+<section id="stack" style="padding-top:64px">
+  <div class="container">
+    <div class="section-head center">
+      <span class="eyebrow">The stack</span>
+      <h2>Three layers. One record underneath.</h2>
+      <p class="lead" style="margin:14px auto 0">The record is the K-RERA filing. The intelligence is what we do with it: read it, score it, compare it, and let you ask it questions.</p>
+    </div>
+    <div class="stack">
+      <div class="stack-cell"><span class="tagline">Layer one</span><h3>Property Intelligence</h3><p>The full record, read for you: timeline, filings, certificates, complaints, promoter history. Two comparables in the corridor. One published score with its working shown. Every fact with its source and the date we captured it.</p></div>
+      <div class="stack-cell"><span class="tagline">Layer two</span><h3>Decision Agent</h3><p>Ask the report in plain language, on WhatsApp or here. It answers only from the record it was built on, cites the source and date on every answer, compares records, and never tells you what to buy.</p></div>
+      <div class="stack-cell"><span class="tagline">Layer three</span><h3>Buyers Network</h3><p>Verified buyers of the same project, connected to each other. No builders, agents or sellers in the room. Progress photos, milestone checks, and the people who share your stake.</p><span class="soon">Opens per project after launch</span></div>
+    </div>
+    <div class="agent-demo">
+      <p class="ad-q">&ldquo;When was possession promised, and where does it stand?&rdquo;</p>
+      <p class="ad-a">The registration declared completion by 31 December 2025. An application dated 31 December 2025 asks to extend it to 31 December 2026; the reviewed record shows the application, not an approval or a renewed certificate. The latest progress filing, for the quarter ending June 2026, certifies 74 percent completion. No occupancy certificate is on record. Nine months past the original date as of today.</p>
+      <p class="ad-src">SOURCE: K-RERA REGISTRATION RECORD AND Q1 FY2026-27 FILING &middot; CAPTURED ${esc(captured)} &middot; VERIFY LIVE AT ${esc(INDIA.portal_url.replace('https://', '').toUpperCase())}</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ THE CHECK, RUNNING (animated) ============ -->
+<section class="ck" id="run">
+  <div class="container">
+    <p class="ck-eyebrow">Watch the check run</p>
+    <h2>One project in. Nine layers out.</h2>
+    <p class="ck-sub">This is what happens between your lookup and your report: every layer of the record read, every source named, the completion timeline drawn out to today.</p>
+    <div class="ck-addr-wrap"><span class="ck-addr">A HEBBAL PROJECT &middot; REGISTERED OCT 2021 &middot; 203 UNITS</span></div>
+    <div class="ck-rows">
+      <div class="ck-row"><span class="n">01</span><span>REGISTRATION AND VALIDITY</span><span class="ck-dots"></span><span class="src">K-RERA CERTIFICATE</span><span class="st">READ</span></div>
+      <div class="ck-row"><span class="n">02</span><span>COMPLETION DATE HISTORY</span><span class="ck-dots"></span><span class="src">FORM C + EXTENSIONS</span><span class="st hit">1 EXTENSION</span></div>
+      <div class="ck-row"><span class="n">03</span><span>QUARTERLY PROGRESS FILINGS</span><span class="ck-dots"></span><span class="src">ARCHITECT CERTIFICATE</span><span class="st hit">74 PERCENT</span></div>
+      <div class="ck-row"><span class="n">04</span><span>OCCUPANCY CERTIFICATE</span><span class="ck-dots"></span><span class="src">BBMP / KIADB / BDA</span><span class="st hit">NOT ON RECORD</span></div>
+      <div class="ck-row"><span class="n">05</span><span>COMPLAINT ORDERS</span><span class="ck-dots"></span><span class="src">K-RERA ORDERS</span><span class="st">NONE LOCATED</span></div>
+      <div class="ck-row"><span class="n">06</span><span>PROMOTER&#39;S OTHER PROJECTS</span><span class="ck-dots"></span><span class="src">K-RERA REGISTRY</span><span class="st hit">1 EXTENSION ELSEWHERE</span></div>
+      <div class="ck-row"><span class="n">07</span><span>APPROVALS ON FILE</span><span class="ck-dots"></span><span class="src">FILED DOCUMENTS</span><span class="st">5 LISTED</span></div>
+      <div class="ck-row"><span class="n">08</span><span>ESCROW AND DECLARED COST</span><span class="ck-dots"></span><span class="src">FORM REP-I</span><span class="st">READ</span></div>
+      <div class="ck-row"><span class="n">09</span><span>TWO COMPARABLES, SAME CORRIDOR</span><span class="ck-dots"></span><span class="src">SAME FORMULA</span><span class="st">SCORED</span></div>
+    </div>
+    <div class="dl">
+      <p class="dl-title">The completion timeline, drawn to today</p>
+      <div class="dl-track" style="--w:95%">
+        <div class="dl-fill"></div>
+        <div class="dl-pt" style="left:0%"></div><div class="dl-lbl up first" style="left:0%"><b>Registered</b>Oct 2021</div>
+        <div class="dl-pt" style="left:81%"></div><div class="dl-lbl up2" style="left:81%"><b>Declared completion</b>Dec 2025</div>
+        <div class="dl-pt mari" style="left:95%"></div><div class="dl-lbl dn" style="left:95%"><b>Today</b>Sep 2026</div>
+        <div class="dl-pt hollow" style="left:100%"></div><div class="dl-lbl up last" style="left:100%"><b>Extension applied</b>Dec 2026</div>
+      </div>
+      <ul class="dl-legend"><li><i></i>Registered <span>Oct 2021</span></li><li><i></i>Declared completion <span>Dec 2025</span></li><li><i class="mari"></i>Today <span>Sep 2026</span></li><li><i class="hollow"></i>Extension applied <span>Dec 2026</span></li></ul>
+      <div class="dl-sum">
+        <div><div class="v">1</div><div class="l">Extension on record</div></div>
+        <div><div class="v">12</div><div class="l">Months requested</div></div>
+        <div><div class="v">9</div><div class="l">Months past the original date, no OC</div></div>
+      </div>
+      <p class="ck-note">Every line above is a field on the K-RERA record, captured ${esc(captured)}, and the report links you to the live entry. The score at the end of a report is computed from these lines by a published formula and shown with its working, only inside your private report.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ NINE LAYER LEDGER ============ -->
+<section id="layers">
+  <div class="container narrow">
+    <span class="eyebrow">The record</span>
+    <h2>Nine layers. Every source named.</h2>
+    <p class="lead" style="margin:14px 0 30px;max-width:none">Each layer is read from the filing and reported as found, present or absent. Where the record is silent, the report says so and tells you what to ask for.</p>
+    <div class="ledger">
+      <div class="led-row"><span class="no">01</span><span class="what">Registration and validity<span>Registration number and date, current status, the promoter entity actually named (not the brand).</span></span><span class="src">K-RERA certificate</span></div>
+      <div class="led-row"><span class="no">02</span><span class="what">Completion date history<span>The original completion date, every extension since, months requested, approved or pending, slip to today.</span></span><span class="src">Form C + Section 6 extensions</span></div>
+      <div class="led-row"><span class="no">03</span><span class="what">Quarterly progress filings<span>The latest architect certified percentage, when it was filed, and how it compares with the original schedule.</span></span><span class="src">Promoter quarterly filing</span></div>
+      <div class="led-row"><span class="no">04</span><span class="what">Occupancy and completion certificates<span>Full or partial, issuer, scope, conditions and regularized deviations where the certificate records them.</span></span><span class="src">BBMP / KIADB / BDA via the filing</span></div>
+      <div class="led-row"><span class="no">05</span><span class="what">Complaint orders<span>Orders naming the project, disposed or pending, and what they directed.</span></span><span class="src">K-RERA orders</span></div>
+      <div class="led-row"><span class="no">06</span><span class="what">Promoter&#39;s other projects<span>The group&#39;s other registrations: their extensions, their certificates, their slips.</span></span><span class="src">K-RERA registry</span></div>
+      <div class="led-row"><span class="no">07</span><span class="what">Approvals on file<span>Plan sanction, height clearance, environment, fire, consent to establish: listed as filed, absent as absent.</span></span><span class="src">Filed documents</span></div>
+      <div class="led-row"><span class="no">08</span><span class="what">Escrow and declared cost<span>The designated bank, the declared project cost and its split, the unit register.</span></span><span class="src">Form REP-I</span></div>
+      <div class="led-row"><span class="no">09</span><span class="what">Two comparables<span>Two registered projects in the same corridor, read and scored by the same formula, side by side.</span></span><span class="src">Same record, same formula</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ THE SCORE ============ -->
+<section class="meth" id="score">
+  <div class="container">
+    <div class="section-head center">
+      <span class="eyebrow">The ${esc(B.score_name)}</span>
+      <h2>One number. Every point shown.</h2>
+      <p class="lead" style="margin:14px auto 0">Zero to one hundred, higher is stronger, computed by one published formula from the record and printed with the record line behind every point. The record is quoted alongside, so you can disagree with the formula and still use the facts.</p>
+    </div>
+    <div class="meth-steps">
+      <div class="mstep"><h4>Completion timeline &middot; ${WEIGHTS.timeline}</h4><p>Months past the original date without a certificate, extensions on record, applications not yet approved, deadlines already elapsed.</p></div>
+      <div class="mstep"><h4>Delivery certificates &middot; ${WEIGHTS.delivery}</h4><p>Full occupancy certificate, partial with conditions, or none, with the certified percentage where there is no certificate.</p></div>
+      <div class="mstep"><h4>Progress filings &middot; ${WEIGHTS.progress}</h4><p>Whether the quarterly filing is current, and the certified percentage against the original schedule.</p></div>
+      <div class="mstep"><h4>Complaints and promoter &middot; ${WEIGHTS.complaints + WEIGHTS.promoter}</h4><p>Complaint orders located, with the portal tab verified live lifting the ceiling; the promoter group&#39;s other registrations and their record.</p></div>
+    </div>
+    <div class="firewall reveal">
+      <div class="fw-ic">&#128737;</div>
+      <div>
+        <h3>An opinion computed from the record, never a substitute for it</h3>
+        <p>The bands read ${BANDS.map(b => `${b.grade}: ${b.verdict}`).join(', ')}. No builder, promoter, agent or portal can pay to move a point. The score appears only inside your private report. Formula version ${esc(SCORE_VERSION)}.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BEFORE THE BOOKING ============ -->
+<section id="ask" style="padding-top:0">
+  <div class="container narrow center">
+    <span class="eyebrow">Before the booking</span>
+    <h2>Something to compare. Something to ask.</h2>
+    <p class="lead" style="margin:16px auto 0">The sales office gives you the brochure and a possession date. The report gives you the file the date came from, and pairs every finding with the document to ask for: the extension certificate, the latest architect certificate, the occupancy certificate for your tower, the disposed order, the escrow account name. You walk in knowing what to ask, and what a good answer looks like.</p>
+    <div class="mono-line" style="font-family:var(--mono);font-size:.78rem;margin-top:22px;letter-spacing:.06em;color:var(--k)">NO BUILDER MONEY &middot; NO AGENT MONEY &middot; NO LISTING FEES &middot; PAID BY BUYERS, WORKING FOR BUYERS</div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section style="padding-top:64px">
+  <div class="container">
+    <div class="section-head center"><span class="eyebrow">Questions</span><h2>Straight answers</h2></div>
+    <div class="faq">
+${faq.map(([q, a]) => `      <details><summary>${esc(q)}</summary><div class="a">${esc(a)}</div></details>`).join('\n')}
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section style="padding-top:0">
+  <div class="cta-band">
+    <h2>You found the project. Now read its record.</h2>
+    <p>Completion history, certificates, complaints and the promoter&#39;s track record for any K-RERA registered ${esc(INDIA.city)} project, before the booking amount, not after the keys.</p>
+    <a class="btn btn-lg" href="#f_project" onclick="document.getElementById('f_project').focus();return false;">Look up a project free</a>
+  </div>
+</section>
+
+</div>
+
+${ownFooter(cfg)}
+<script src="/assets/app.js"></script>
+<script>
+// The check-run animation: play once when the section enters the viewport
+(function () {
+  var sec = document.getElementById('run');
+  if (!sec) return;
+  if (!('IntersectionObserver' in window)) { sec.classList.add('run'); return; }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) { if (en.isIntersecting) { sec.classList.add('run'); io.disconnect(); } });
+  }, { threshold: 0.35 });
+  io.observe(sec);
+})();
+// Free project lookup: three record fields, then the door to the report
+(function () {
+  var inp = document.getElementById('f_project'), go = document.getElementById('lkGo'), out = document.getElementById('lkOut');
+  if (!inp || !go || !out) return;
+  var API = ${JSON.stringify(R.api)}, REPORT = ${JSON.stringify(R.report)}, PORTAL = ${JSON.stringify(INDIA.portal_url)}, PRICE = ${JSON.stringify(price)};
+  function esc(t) { var d = document.createElement('div'); d.textContent = t || ''; return d.innerHTML; }
+  function show(html) { out.classList.add('on'); out.innerHTML = html; }
+  function fmt(iso) { if (!iso) return 'Not shown'; var d = new Date(iso + 'T00:00:00Z'); return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }); }
+  async function run() {
+    var v = inp.value.trim();
+    if (v.length < 3) { show('<p class="lk-miss">Type a project name or a K-RERA registration number.</p>'); inp.focus(); return; }
+    go.disabled = true; show('<p class="lk-miss" style="font-family:var(--mono);font-size:.78rem;letter-spacing:.12em">READING THE RECORD...</p>');
+    try {
+      var r = await fetch(API + '/lookup?q=' + encodeURIComponent(v));
+      var j = await r.json(); go.disabled = false;
+      if (!j.ok) {
+        show('<p class="lk-miss"><strong>' + esc(v) + '</strong> is not in the launch set yet. The crawl is loading Bengaluru corridor by corridor, north first. Check the live entry at <a href="' + PORTAL + '" rel="noopener">' + esc(PORTAL.replace('https://', '')) + '</a>, or <a href="' + REPORT + '/adarsh-crest?demo=1">open the sample report</a> to see what a full check looks like.</p>');
+        return;
+      }
+      var p = j.project; var extCls = p.extension_count > 0 ? ' warn' : '';
+      show('<div class="lk-head"><span class="lk-name">' + esc(p.name) + '</span><span class="lk-rera">' + esc(p.rera_no) + ' &middot; ' + esc(p.locality) + '</span></div>'
+        + '<div class="lk-rows">'
+        + '<div class="lk-cell"><div class="lk-lbl">Registration status</div><div class="lk-val" style="font-size:1rem;line-height:1.35">' + esc(p.status) + '</div></div>'
+        + '<div class="lk-cell"><div class="lk-lbl">Original completion date</div><div class="lk-val">' + esc(fmt(p.original_completion)) + '</div><div class="lk-sub">As declared at registration</div></div>'
+        + '<div class="lk-cell"><div class="lk-lbl">Extensions on record</div><div class="lk-val' + extCls + '">' + esc(String(p.extension_count)) + '</div><div class="lk-sub">' + (p.extension_count > 0 ? 'Dates, months and status are in the report' : 'None on the record captured') + '</div></div>'
+        + '</div>'
+        + '<div class="lk-foot"><p>That is the free layer. The report reads the rest: every extension with its status, the latest progress filing, certificates, complaint orders, the promoter\\u2019s other projects, two comparables and the score, plus the Decision Agent.</p>'
+        + '<a class="btn btn-primary" href="' + REPORT + '/' + encodeURIComponent(p.slug) + '?demo=1">Open the full report, ' + esc(PRICE) + '</a></div>'
+        + '<p class="lk-src">SOURCE: K-RERA REGISTRATION RECORD &middot; CAPTURED ' + esc(j.captured) + ' &middot; VERIFY LIVE AT ' + esc(PORTAL.replace('https://', '').toUpperCase()) + '</p>');
+    } catch (e) { go.disabled = false; show('<p class="lk-miss">The lookup is unavailable right now. The record itself is unaffected: check the live entry at <a href="' + PORTAL + '" rel="noopener">' + esc(PORTAL.replace('https://', '')) + '</a>.</p>'); }
+  }
+  go.addEventListener('click', run);
+  inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); run(); } });
+  var q = new URLSearchParams(location.search).get('q'); if (q) { inp.value = q; run(); }
+})();
+</script>
+</body>
+</html>`;
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.send(html);
+}
+
+/* ---------------- free lookup API ---------------- */
+export function lookupApi(req, res) {
+  const q = String(req.query.q || '').slice(0, 120);
+  const p = findProject(q);
+  if (!p) return res.json({ ok: false, query: q, message: 'Not in the launch set yet.' });
+  res.json({ ok: true, captured: getCaptured(), project: freeLookup(p) });
+}
+export function projectsApi(req, res) { res.json({ captured: getCaptured(), projects: listProjects() }); }

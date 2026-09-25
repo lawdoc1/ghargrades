@@ -1,0 +1,168 @@
+{
+  "_about": "Bengaluru launch set. Every fact carries a source id (see sources[]). Scores are NOT stored here: they are computed at render time by score.js from these record fields, so the record stays the record and the score stays a published-formula opinion.",
+  "captured": "2026-09-25",
+  "sources": {
+    "S1": { "label": "K-RERA project registration record (rera.karnataka.gov.in), via public mirror of the filing", "captured": "2026-09-25", "note": "The K-RERA portal blocks automated reads; fields were captured from a public mirror of the filing (SiteSetu dossier, reviewed 29/30 Jul 2026) and cross checked against the portal certificate format. Verify live on the portal before relying on any date." },
+    "S2": { "label": "K-RERA Section 6 extension record / certificate, via public mirror", "captured": "2026-09-25" },
+    "S3": { "label": "Promoter quarterly progress filing (architect certificate / Form 4), via public mirror", "captured": "2026-09-25" },
+    "S4": { "label": "KIADB occupancy certificate, via public mirror", "captured": "2026-09-25" },
+    "S5": { "label": "BBMP partial occupancy certificate, via public mirror", "captured": "2026-09-25" },
+    "S6": { "label": "Public listings (price band only; indicative, not promoter confirmed)", "captured": "2026-09-25" },
+    "S7": { "label": "Public K-RERA orders and news indexes searched for complaint orders naming the project", "captured": "2026-09-25", "note": "A nil result here is not a nil result on the portal complaints tab, which must be checked live." }
+  },
+  "projects": [
+    {
+      "slug": "adarsh-crest",
+      "name": "Adarsh Crest",
+      "rera_no": "PRM/KA/RERA/1251/446/PR/211022/004369",
+      "district": "Bengaluru Urban",
+      "locality": "Hebbal",
+      "corridor": "North Bengaluru",
+      "type": "Residential apartments",
+      "price_band": "On request (no dated price list on record)",
+      "registration": {
+        "date": "2021-10-22",
+        "status": "Registered; extension application on record, no renewed certificate shown",
+        "promoter": "M/s Adarsh Developers (partnership firm)",
+        "marketed_as": "Adarsh Developers",
+        "promoter_address": "#10, Vittal Mallya Road, Bengaluru",
+        "area_acres": 3.65,
+        "units": 203,
+        "unit_mix": "22 two bedroom, 139 three bedroom, 42 three bedroom plus servant",
+        "structure": "Five wings in two blocks with two common basements (Block 1: Wing A GF+10, Wing B GF+9; Block 2: Wings A, B, C GF+10)",
+        "declared_cost_cr": 266.6,
+        "cost_split": { "construction_cr": 210, "land_cr": 56.6 },
+        "escrow_bank": "HDFC Bank",
+        "approvals_on_file": ["Building plan approval", "AAI height clearance", "Environment clearance", "Fire scheme approval", "Consent to establish"],
+        "documents_on_file": 22,
+        "src": ["S1"]
+      },
+      "timeline": {
+        "original_completion": "2025-12-31",
+        "extensions": [
+          { "applied": "2025-12-31", "to": "2026-12-31", "months": 12, "status": "pending", "note": "No approval date, extension number or renewed certificate shown in the reviewed record.", "src": ["S1", "S2"] }
+        ],
+        "current_completion": "2026-12-31",
+        "current_completion_basis": "applied for, not shown as approved",
+        "src": ["S1", "S2"]
+      },
+      "progress": {
+        "latest_filing": { "period": "Q1 FY2026-27", "filed": "2026-07-15", "site_inspection": "2026-07-06", "architect_pct": 74, "note": "Promoter filed professional certificate, not an independent site verification.", "src": ["S3"] }
+      },
+      "delivery": {
+        "oc": { "status": "none", "date": null, "note": "No partial or full occupancy certificate or completion certificate identified in the reviewed record. This is not a claim that none exists.", "src": ["S1"] }
+      },
+      "complaints": { "located": 0, "verified_on_portal": false, "note": "No complaint orders naming this project were located in public orders and indexes searched. The K-RERA complaints tab must be checked live.", "src": ["S7"] },
+      "promoter_record": {
+        "note": "Other Karnataka registrations of the same promoter group, on the record.",
+        "other_projects": [
+          { "name": "Adarsh Greens (Phase I)", "rera_no": "PRM/KA/RERA/1251/309/PR/201001/003607", "locality": "Kogilu, North Bengaluru", "promoter_entity": "Adarsh Haven Private Limited", "units": 669, "registered": "2020-10-01", "original_completion": "2024-10-31", "extensions": [{ "granted": "2025-01-29", "to": "2025-10-31", "months": 12, "status": "granted, since elapsed" }], "oc": "not established in the reviewed record", "src": ["S1", "S2"] },
+          { "name": "Adarsh Park Heights Phase 1", "locality": "Gunjur, Varthur Road", "note": "Marketing possession 2025-26; filing not reviewed in this run.", "src": ["S6"] },
+          { "name": "Adarsh Park Heights Phase 2", "locality": "Gunjur, Varthur Road", "note": "Marketing possession 2026-27; filing not reviewed in this run.", "src": ["S6"] }
+        ],
+        "src": ["S1", "S2", "S6"]
+      },
+      "comparables": ["godrej-ananda-phase-1", "bhartiya-city-nikoo-homes-4"]
+    },
+    {
+      "slug": "godrej-ananda-phase-1",
+      "name": "Godrej Ananda Phase 1",
+      "rera_no": "PRM/KA/RERA/1251/309/PR/210331/004084",
+      "district": "Bengaluru Urban",
+      "locality": "Bagalur (Gummanahalli), KIADB Aerospace Park",
+      "corridor": "North Bengaluru",
+      "type": "Residential apartments (Towers E, F, G)",
+      "price_band": "\u20B975 L to \u20B91.2 Cr (public listings, indicative)",
+      "registration": {
+        "date": "2021-03-31",
+        "status": "Registered; full occupancy certificate on record; administrative Section 6 extension for conveyance",
+        "promoter": "Universal Metro Properties LLP",
+        "marketed_as": "Godrej Properties (49 percent LLP partner and brand; not the named promoter)",
+        "promoter_address": null,
+        "area_sqm": 15453.94,
+        "units": 806,
+        "unit_mix": "Towers E, F and G; 806 registered units",
+        "structure": "Phase 1 of a 20.33 acre campus (campus is not phase scope)",
+        "declared_cost_cr": null,
+        "escrow_bank": null,
+        "approvals_on_file": [],
+        "documents_on_file": null,
+        "src": ["S1"]
+      },
+      "timeline": {
+        "original_completion": null,
+        "original_completion_note": "Original validity end not shown in the reviewed record; the occupancy certificate pre-dates the only extension on record.",
+        "extensions": [
+          { "granted": "2025-12-05", "to": "2027-01-08", "months": null, "status": "granted, administrative", "reason": "Promoter stated KIADB had not executed the absolute sale deed needed for allottee conveyances. Construction was already certified complete.", "src": ["S2"] }
+        ],
+        "current_completion": "2027-01-08",
+        "current_completion_basis": "Section 6 administrative registration deadline (post OC)",
+        "src": ["S1", "S2"]
+      },
+      "progress": {
+        "latest_filing": { "period": "Form 4 as at 31 Mar 2026", "filed": "2026-03-31", "site_inspection": null, "architect_pct": 100, "sold_booked": 799, "available": 7, "note": "Unit register filed by the promoter; a portal overview shows a conflicting lower booking count.", "src": ["S3"] }
+      },
+      "delivery": {
+        "oc": { "status": "full", "date": "2024-03-12", "issuer": "KIADB", "scope": "Towers E, F and G; all 806 registered units", "src": ["S4"] }
+      },
+      "complaints": { "located": 0, "verified_on_portal": false, "note": "No complaint orders naming this phase were located in public orders and indexes searched. Check the portal tab live.", "src": ["S7"] },
+      "promoter_record": {
+        "note": "Named promoter is a single purpose LLP; Godrej Properties Limited is the brand and a 49 percent partner. Buyer recourse runs to the named entity.",
+        "other_projects": [
+          { "name": "Godrej Ananda Phase 2 (Soul at Godrej Ananda)", "locality": "Bagalur Aerospace Park", "note": "Separate registration; not reviewed in this run.", "src": ["S6"] }
+        ],
+        "src": ["S1"]
+      },
+      "comparables": []
+    },
+    {
+      "slug": "bhartiya-city-nikoo-homes-4",
+      "name": "Bhartiya City Nikoo Homes 4",
+      "rera_no": "PRM/KA/RERA/1251/472/PR/210731/004208",
+      "district": "Bengaluru Urban",
+      "locality": "Thanisandra Main Road (Bhartiya City)",
+      "corridor": "North Bengaluru",
+      "type": "Residential apartments (Block 11, Wings A, B, C)",
+      "price_band": "\u20B946 L to \u20B91.7 Cr (public listings, indicative)",
+      "registration": {
+        "date": "2021-07-31",
+        "status": "Registered; partial occupancy certificate on record; one extension granted",
+        "promoter": "Bhartiya Urban Private Limited",
+        "marketed_as": "Bhartiya City Developers (historical name of the same company)",
+        "promoter_address": null,
+        "area_acres": 4.07,
+        "units": 716,
+        "unit_mix": "650 homes plus 66 EWS across Wings A, B and C",
+        "structure": "Block 11 of the Bhartiya City township (township is not phase scope)",
+        "declared_cost_cr": 472.7,
+        "cost_split": { "land_cr": 39.6, "unattributed_cr": 433.1 },
+        "escrow_bank": null,
+        "approvals_on_file": [],
+        "documents_on_file": 14,
+        "src": ["S1"]
+      },
+      "timeline": {
+        "original_completion": "2025-07-31",
+        "extensions": [
+          { "granted": null, "to": "2026-01-31", "months": 6, "status": "granted", "reason": "Recorded as awaiting occupancy certificate.", "src": ["S2"] }
+        ],
+        "current_completion": "2026-01-31",
+        "current_completion_basis": "approved Section 6 extension",
+        "src": ["S1", "S2"]
+      },
+      "progress": {
+        "latest_filing": { "period": "Q4 FY2025-26", "filed": "2026-04-20", "site_inspection": null, "architect_pct": 100, "sold_booked": 716, "available": 0, "note": "Promoter quarterly update; not a resale or live availability finding.", "src": ["S3"] }
+      },
+      "delivery": {
+        "oc": { "status": "partial", "date": "2026-01-20", "issuer": "BBMP", "scope": "Block 11, Wings A to C: 716 homes, GF+4 clubhouse, two common basements", "deviations_noted": true, "note": "Expressly a partial OC with stated conditions. It records deviations against the sanctioned plan as within regularization limits and a payment of \u20B976.65 lakh toward compounding, ground rent and scrutiny fee.", "src": ["S5"] }
+      },
+      "complaints": { "located": 0, "verified_on_portal": false, "note": "No complaint orders naming this block were located in public orders and indexes searched. Check the portal tab live.", "src": ["S7"] },
+      "promoter_record": {
+        "note": "Promoter legal name changed from Bhartiya City Developers Pvt Ltd to Bhartiya Urban Private Limited (same CIN). Earlier Nikoo Homes phases exist under separate registrations; not reviewed in this run.",
+        "other_projects": [],
+        "src": ["S1"]
+      },
+      "comparables": []
+    }
+  ]
+}
