@@ -7,6 +7,7 @@ import { bangalorePage, lookupApi, projectsApi } from './page.js';
 import { bangaloreReport, scoreApi } from './report.js';
 import { indiaAgentApi, agentAllow } from './agent.js';
 import { listProjects } from './projects.js';
+import { dbConfigured } from './db.js';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 
@@ -28,7 +29,7 @@ export function indiaRouter() {
   });
   r.get('/robots.txt', (req, res) => { const c = siteConfig(req); res.type('text/plain').send(c.public ? `User-agent: *\nAllow: /\nDisallow: /report/\nSitemap: ${c.site_url}/sitemap.xml\n` : `User-agent: *\nDisallow: /\n`); });
   r.get('/sitemap.xml', (req, res) => { const c = siteConfig(req); res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${c.site_url}/</loc></url></urlset>\n`); });
-  r.get('/healthz', (req, res) => res.json({ ok: true, brand: INDIA.brand.name, projects: listProjects().length, public: INDIA.public }));
+  r.get('/healthz', async (req, res) => res.json({ ok: true, brand: INDIA.brand.name, projects: (await listProjects()).length, db: dbConfigured(), public: INDIA.public }));
   r.use((req, res) => res.status(404).type('text/plain').send('Not found'));
   return r;
 }

@@ -47,7 +47,7 @@ function kv(rows) { return `<table class="kv">${rows.filter(r => r[1] !== null &
 /* ---------- the page ---------- */
 export async function bangaloreReport(req, res) {
   const cfg = siteConfig(req); const B = cfg.brand, R = cfg.routes;
-  const ctx = agentContext(req.params.slug, undefined, B);
+  const ctx = await agentContext(req.params.slug, undefined, B);
   if (!ctx) return res.status(404).type('text/plain').send('Report not found in the launch set.');
   const { subject: { project: p, score: s, facts: f }, comps, sources, captured, asOf } = ctx;
   const demo = true; // until the paid gate ships every render is the sample
@@ -325,8 +325,8 @@ ${asksFor(p, f).map(([t, x], i) => `<div class="adv"><strong>${i + 1}. ${esc(t)}
 }
 
 /* ---------- score JSON ---------- */
-export function scoreApi(req, res) {
-  const ctx = agentContext(req.params.slug);
+export async function scoreApi(req, res) {
+  const ctx = await agentContext(req.params.slug);
   if (!ctx) return res.status(404).json({ error: 'not_found' });
   const pick = x => ({ slug: x.project.slug, name: x.project.name, rera_no: x.project.rera_no, score: x.score, facts: x.facts });
   res.json({ captured: ctx.captured, weights: WEIGHTS, bands: BANDS, subject: pick(ctx.subject), comparables: ctx.comps.map(pick) });

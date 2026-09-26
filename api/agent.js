@@ -27,14 +27,13 @@ const dot = s => String(s || '').trim().replace(/\.+$/, '');
 const today = () => new Date().toISOString().slice(0, 10);
 
 /* ---------- context assembly (one place; the report and the agent share it) ---------- */
-export function agentContext(slug, asOf = today(), brand = INDIA.brand) {
-  const p = getProject(slug); if (!p) return null;
+export async function agentContext(slug, asOf = today(), brand = INDIA.brand) {
+  const p = await getProject(slug); if (!p) return null;
   const subject = scored(p, asOf);
-  const comps = (p.comparables || []).map(s => getProject(s)).filter(Boolean).map(c => scored(c, asOf));
-  return { subject, comps, sources: getSources(), captured: getCaptured(), asOf, brand };
+  const comps = (await Promise.all((p.comparables || []).map(s => getProject(s)))).filter(Boolean).map(c => scored(c, asOf));
+  return { subject, comps, sources: await getSources(p), captured: await getCaptured(p), asOf, brand };
 }
 
-function cite(rec, ids) { const src = getSources(); return (ids || rec.src || ['S1']).map(id => src[id]?.label ? `${src[id].label.split(',')[0]}` : id).join('; '); }
 const stamp = ctx => `Source: K-RERA record via public mirror, captured ${ctx.captured}. Verify the live entry at ${INDIA.portal_url}.`;
 
 /* ---------- deterministic answers for the questions everyone asks ---------- */
@@ -136,7 +135,7 @@ RULES
 }
 
 export async function askIndiaAgent({ slug, question, history, brand }) {
-  const ctx = agentContext(slug, undefined, brand);
+  const ctx = await agentContext(slug, undefined, brand);
   if (!ctx) { const e = new Error('report_not_found'); e.code = 404; throw e; }
   const q = String(question || '').slice(0, 1500).trim();
   if (!q) { const e = new Error('empty_question'); e.code = 400; throw e; }

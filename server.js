@@ -2,6 +2,7 @@
 import express from 'express';
 import { indiaRouter } from './api/router.js';
 import { INDIA } from './api/config.js';
+import { ensureSeeded } from './api/projects.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -10,4 +11,7 @@ app.use((req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); res.
 app.use(indiaRouter());
 
 const PORT = process.env.PORT || 4100;
-app.listen(PORT, () => console.log(`${INDIA.brand.name} on :${PORT} (domain: ${INDIA.domain || 'none yet'}, public: ${INDIA.public})`));
+app.listen(PORT, async () => {
+  console.log(`${INDIA.brand.name} on :${PORT} (domain: ${INDIA.domain || 'none yet'}, public: ${INDIA.public})`);
+  try { console.log('records:', JSON.stringify(await ensureSeeded())); } catch (e) { console.log('records: seed check failed', e.message); }
+});

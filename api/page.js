@@ -7,7 +7,8 @@
 // GET /api/projects     -> launch set list (name, slug, rera_no, locality)
 
 import { INDIA, RUPEE, siteConfig } from './config.js';
-import { listProjects, findProject, freeLookup, getCaptured } from './projects.js';
+import { listProjects, findProject, freeLookup, getCaptured, logLookup } from './projects.js';
+import { createHash } from 'node:crypto';
 import { WEIGHTS, BANDS, SCORE_VERSION } from './score.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -24,7 +25,13 @@ html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 @media(max-width:640px){.nav .btn{padding:10px 14px;font-size:.86rem;white-space:nowrap}}
 .nav .btn-primary:hover{background:#0B1226}
 .blr .eyebrow{color:var(--k);letter-spacing:.18em}
-.blr .hl-underline{background:linear-gradient(180deg,transparent 62%,var(--mari-soft) 62%)}
+.blr .hl-underline{background:linear-gradient(90deg,var(--mari-soft),#FFDF9A,var(--mari-soft)) no-repeat 0 100%/200% 38%;opacity:0;animation:ggsheen 6s ease-in-out infinite,ggFade .6s ease 1s forwards}
+@keyframes ggFade{to{opacity:1}}
+@keyframes ggsheen{0%,100%{background-position:0 100%}50%{background-position:100% 100%}}
+.gg-in{opacity:0;transform:translateY(14px);animation:ggIn .75s var(--ease,cubic-bezier(.2,.8,.2,1)) forwards}
+.gg-in.d1{animation-delay:.45s}.gg-in.d2{animation-delay:.65s}.gg-in.d3{animation-delay:.85s}.gg-in.d4{animation-delay:1.05s}
+@keyframes ggIn{to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.gg-in{animation:none;opacity:1;transform:none}.blr .hl-underline{animation:none;opacity:1}}
 .blr .btn-primary{background:var(--k);border-color:var(--k);color:#fff;box-shadow:none}
 .blr .btn-primary:hover{background:var(--k2);box-shadow:none}
 .blr .btn-ghost{color:var(--k)}
@@ -62,7 +69,11 @@ html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 @media(max-width:920px){.h2-grid{grid-template-columns:1fr;gap:30px}.h2-title,.h2-lead{max-width:100%}}
 @media(max-width:640px){.hero2{padding:36px 0 40px!important}.h2-title{font-size:clamp(1.6rem,7.2vw,2.1rem)!important;margin-bottom:14px}.h2-lead{font-size:.96rem;margin-bottom:20px}.h2-news{padding:18px 16px;border-radius:16px}.hn-item{font-size:.86rem;padding:11px 0}.h2-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:32px}.hs{padding:16px 14px 14px;border-radius:13px}.hs-num{font-size:1.5rem}.hs-lbl{font-size:.7rem}}
 /* ============ project pill (index search bar format) ============ */
-.h2-search-row{margin-top:44px;display:flex;justify-content:center;position:relative;z-index:500}
+.h2-search-row{margin-top:22px;display:flex;justify-content:center;position:relative;z-index:500}
+.h2-seal-row{display:flex;align-items:center;gap:22px;margin-top:34px}
+.h2-seal-row .zseal{margin-top:0;flex:none}
+.h2-seal-row p{margin:0!important}
+@media(max-width:640px){.h2-seal-row{gap:14px;margin-top:24px}}
 .h2-search-row .zsearch{width:100%;max-width:800px;text-align:center}
 .zsearch{position:relative}
 .zsearch-bar{display:flex;align-items:center;background:#fff;border:1.5px solid var(--k);border-radius:999px;box-shadow:0 2px 6px rgba(11,18,38,.05),0 14px 34px rgba(11,18,38,.08);padding:6px 8px 6px 6px;transition:box-shadow .25s}
@@ -77,7 +88,7 @@ html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .zs-run:disabled{opacity:.6;cursor:default}
 .zsearch-sub{margin-top:16px;font-size:.9rem;color:var(--gy)}
 .zsearch-sub a{color:var(--k);text-decoration:underline;text-underline-offset:3px;font-weight:500}
-@media(max-width:640px){.h2-search-row{margin-top:30px}.zsearch-bar{flex-wrap:wrap;border-radius:20px;padding:8px;gap:6px}.zs-cat-btn{width:100%;justify-content:center}.zs-divider{display:none}.zs-input-wrap{width:calc(100% - 30px)}.zs-run{width:100%;margin-left:0;padding:13px}}
+@media(max-width:640px){.h2-search-row{margin-top:18px}.zsearch-bar{flex-wrap:wrap;border-radius:20px;padding:8px;gap:6px}.zs-cat-btn{width:100%;justify-content:center}.zs-divider{display:none}.zs-input-wrap{width:calc(100% - 30px)}.zs-run{width:100%;margin-left:0;padding:13px}}
 /* free lookup result card */
 .lk{display:none;text-align:left;margin:18px auto 0;max-width:800px;background:#fff;border:2px solid var(--k);border-radius:20px;padding:22px 24px;box-shadow:6px 6px 0 var(--mari-soft)}
 .lk.on{display:block}
@@ -215,7 +226,7 @@ footer .foot-legal,footer .foot-legal span{color:#9AA3BD!important;border-color:
 /* ---------------- site chrome: own nav and footer ---------------- */
 export function ownNav(cfg) {
   return `<nav class="nav"><div class="container nav-inner">
-  <a class="brand" href="${cfg.routes.page}"><svg class="mark" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="3" y="9" width="20" height="14" rx="2" fill="none" stroke="#14213D" stroke-width="2.4"/><path d="M2 10 L13 3 L24 10" fill="none" stroke="#E9A825" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg> ${esc(cfg.brand.name)}</a>
+  <a class="brand" href="${cfg.routes.page}"><img class="mark" src="/assets/logo.svg" alt=""> ${esc(cfg.brand.name)} <small>.com</small></a>
   <div class="nav-links"><a href="#pricing">Free lookup</a><a href="#score">The score</a><a href="#layers">What we read</a><a href="${cfg.routes.report}/adarsh-crest?demo=1">Sample report</a><a class="btn btn-primary" href="#f_project" onclick="document.getElementById('f_project').focus();return false;">Look up a project</a></div>
 </div></nav>`;
 }
@@ -224,7 +235,7 @@ export function ownFooter(cfg) {
   <div class="container">
     <div class="foot-grid">
       <div class="foot-brand">
-        <a class="brand" href="${cfg.routes.page}">${esc(cfg.brand.name)}</a>
+        <a class="brand" href="${cfg.routes.page}"><img class="mark" src="/assets/logo.svg" alt=""> ${esc(cfg.brand.name)} <small>.com</small></a>
         <p>Property Intelligence for ${esc(INDIA.city)}. The K-RERA record, read, scored and compared, before the decision.</p>
         <div class="foot-badges"><span class="fbadge">100% PUBLIC RECORDS</span><span class="fbadge">EVERY FACT SOURCED AND DATED</span><span class="fbadge">NO BUILDER OR AGENT MONEY</span></div>
       </div>
@@ -240,13 +251,12 @@ export function ownFooter(cfg) {
 /* ---------------- landing page ---------------- */
 export async function bangalorePage(req, res) {
   res.set('Cache-Control', 'public, max-age=3600');
-  res.send(renderLanding(siteConfig(req)));
+  res.send(renderLanding(siteConfig(req), await getCaptured()));
 }
 // renderLanding(cfg) -> HTML string. Used by the route above and by api/generate-pages.js (static frontend/index.html for Netlify).
-export function renderLanding(cfg) {
+export function renderLanding(cfg, captured) {
   const B = cfg.brand, R = cfg.routes, SITE_URL = cfg.site_url;
   const price = RUPEE(INDIA.report_price_inr);
-  const captured = getCaptured();
   const faq = [
     ['Is this the K-RERA website?', `No. K-RERA (${INDIA.portal_url}) is the regulator and the only official record. ${B.name} reads that public record, keeps every fact with its source and capture date, computes a published score from it, and lets you compare projects and ask the Decision Agent about what the record says. Every report tells you to verify the live entry on the portal, and links to it.`],
     ['What does the free lookup show?', 'Three fields from the registration record: current registration status, the original completion date the promoter declared, and how many completion extensions are on record. Nothing more, and nothing hidden: the full report is where the dates, filings, complaints, promoter history, comparables and the score live.'],
@@ -309,24 +319,10 @@ ${ownNav(cfg)}
         <span class="eyebrow">${esc(B.name)} &middot; Property Intelligence &middot; No builder or agent money</span>
         <p class="h2-kicker">Property Intelligence &middot; Decision Agent &middot; Buyers Network</p>
         <h1 class="h2-title">Every project has a record. <span class="hl-underline">Check before you book.</span></h1>
-        <p class="h2-lead">Before you pay a booking amount on a ${esc(INDIA.city)} project, read what the K-RERA record says about it: <strong>the completion date the builder declared, every extension since, the progress filings, the occupancy certificate, the complaint orders, and the promoter&#39;s other projects.</strong> Then compare it with two projects in the same corridor. ${esc(INDIA.tagline)}</p>
-        <div class="zseal" aria-label="${esc(B.name)} seal">
-          <svg viewBox="0 0 160 160" width="128" height="128" role="img">
-            <defs><path id="blrArc" d="M80,80 m-60,0 a60,60 0 1,1 120,0 a60,60 0 1,1 -120,0"/></defs>
-            <circle cx="80" cy="80" r="77" fill="#FFFFFF" stroke="#E5E2D9" stroke-width="1.5"/>
-            <circle cx="80" cy="80" r="70" fill="none" stroke="#14213D" stroke-width="1" opacity=".25"/>
-            <g class="zseal-spin"><text font-family="'IBM Plex Mono',ui-monospace,monospace" font-size="9.2" letter-spacing="2.4" fill="#14213D" font-weight="600"><textPath href="#blrArc">THE RECORDS ARE PUBLIC &middot; THE INTELLIGENCE ISN&#8217;T &middot;&#160;</textPath></text></g>
-            <circle cx="80" cy="80" r="45" fill="#fff" stroke="#14213D" stroke-width="1.5"/>
-            <rect x="62" y="70" width="36" height="34" rx="1.5" fill="none" stroke="#14213D" stroke-width="3"/>
-            <path d="M62 84h36M74 70v34M86 70v34" stroke="#14213D" stroke-width="1.6"/>
-            <path d="M56 70L80 56L104 70" fill="none" stroke="#E9A825" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="80" y="115" text-anchor="middle" font-family="'IBM Plex Mono',ui-monospace,monospace" font-size="5.4" letter-spacing=".9" fill="#14213D" font-weight="600">${esc(B.short.toUpperCase())}</text>
-          </svg>
-        </div>
-        <p style="font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;color:#8A90A3;margin-top:22px">K-RERA RECORD &middot; EVERY FACT SOURCED AND DATED &middot; ONE PROJECT, ONE REPORT &middot; ${esc(price)}</p>
+        <p class="h2-lead gg-in d1">Before you pay a booking amount on a ${esc(INDIA.city)} project, read what the K-RERA record says about it: <strong>the completion date the builder declared, every extension since, the progress filings, the occupancy certificate, the complaint orders, and the promoter&#39;s other projects.</strong> Then compare it with two projects in the same corridor. ${esc(INDIA.tagline)}</p>
       </div>
 
-      <aside class="h2-news">
+      <aside class="h2-news gg-in d2">
         <p class="hn-head">Latest from the ${esc(INDIA.city)} record</p>
         <div id="hnItems">
 ${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}<small>${esc(s)}</small></span><span class="hn-arrow">&rsaquo;</span></a>`).join('\n')}
@@ -336,7 +332,7 @@ ${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}
 
     </div>
 
-    <div class="h2-search-row">
+    <div class="h2-search-row gg-in d3">
       <div class="zsearch">
         <div class="zsearch-bar">
           <span class="zs-cat-btn">&#127970; Project lookup, free</span>
@@ -352,11 +348,28 @@ ${news.map(([t, s]) => `          <a class="hn-item" href="#run"><span>${esc(t)}
       </div>
     </div>
 
+    <div class="h2-seal-row gg-in d4">
+        <div class="zseal" aria-label="${esc(B.name)} seal">
+          <svg viewBox="0 0 160 160" width="128" height="128" role="img">
+            <defs><path id="blrArc" d="M80,80 m-60,0 a60,60 0 1,1 120,0 a60,60 0 1,1 -120,0"/></defs>
+            <circle cx="80" cy="80" r="77" fill="#FFFFFF" stroke="#E5E2D9" stroke-width="1.5"/>
+            <circle cx="80" cy="80" r="70" fill="none" stroke="#14213D" stroke-width="1" opacity=".25"/>
+            <g class="zseal-spin"><text font-family="'IBM Plex Mono',ui-monospace,monospace" font-size="9.2" letter-spacing="2.4" fill="#14213D" font-weight="600"><textPath href="#blrArc">THE RECORDS ARE PUBLIC &middot; THE INTELLIGENCE ISN&#8217;T &middot;&#160;</textPath></text></g>
+            <circle cx="80" cy="80" r="45" fill="#fff" stroke="#14213D" stroke-width="1.5"/>
+            <rect x="62" y="70" width="36" height="34" rx="1.5" fill="none" stroke="#14213D" stroke-width="3"/>
+            <path d="M62 84h36M74 70v34M86 70v34" stroke="#14213D" stroke-width="1.6"/>
+            <path d="M56 70L80 56L104 70" fill="none" stroke="#E9A825" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="80" y="115" text-anchor="middle" font-family="'IBM Plex Mono',ui-monospace,monospace" font-size="5.4" letter-spacing=".9" fill="#14213D" font-weight="600">${esc(B.short.toUpperCase())}</text>
+          </svg>
+        </div>
+        <p style="font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;color:#8A90A3;margin-top:22px">K-RERA RECORD &middot; EVERY FACT SOURCED AND DATED &middot; ONE PROJECT, ONE REPORT &middot; ${esc(price)}</p>
+    </div>
+
     <div class="h2-stats">
-      <div class="hs"><div class="hs-num">9</div><div class="hs-lbl">Record layers read<br>per project</div></div>
-      <div class="hs"><div class="hs-num">2</div><div class="hs-lbl">Comparable projects in the<br>same corridor, scored the same way</div></div>
-      <div class="hs"><div class="hs-num">1</div><div class="hs-lbl">Published formula behind<br>the Property Score</div></div>
-      <div class="hs"><div class="hs-num">${esc(price)}</div><div class="hs-lbl">One project, one report.<br>Lookup free.</div></div>
+      <div class="hs reveal"><div class="hs-num">9</div><div class="hs-lbl">Record layers read<br>per project</div></div>
+      <div class="hs reveal"><div class="hs-num">2</div><div class="hs-lbl">Comparable projects in the<br>same corridor, scored the same way</div></div>
+      <div class="hs reveal"><div class="hs-num">1</div><div class="hs-lbl">Published formula behind<br>the Property Score</div></div>
+      <div class="hs reveal"><div class="hs-num">${esc(price)}</div><div class="hs-lbl">One project, one report.<br>Lookup free.</div></div>
     </div>
   </div>
 </header>
@@ -598,10 +611,12 @@ ${ownFooter(cfg)}
 }
 
 /* ---------------- free lookup API ---------------- */
-export function lookupApi(req, res) {
+export async function lookupApi(req, res) {
   const q = String(req.query.q || '').slice(0, 120);
-  const p = findProject(q);
+  const p = await findProject(q);
+  const ip = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').toString().split(',')[0].trim();
+  logLookup(q, p?.slug, ip ? createHash('sha256').update(ip).digest('hex').slice(0, 16) : null);   // fire and forget
   if (!p) return res.json({ ok: false, query: q, message: 'Not in the launch set yet.' });
-  res.json({ ok: true, captured: getCaptured(), project: freeLookup(p) });
+  res.json({ ok: true, captured: await getCaptured(p), project: freeLookup(p) });
 }
-export function projectsApi(req, res) { res.json({ captured: getCaptured(), projects: listProjects() }); }
+export async function projectsApi(req, res) { res.json({ captured: await getCaptured(), projects: await listProjects() }); }
