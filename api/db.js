@@ -9,9 +9,15 @@ export function db() {
   if (client) return client;
   const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_KEY;
   if (!url || !key) return null;
-  client = createClient(url, key, { auth: { persistSession: false } });
+  try {
+    client = createClient(url, key, { auth: { persistSession: false } });
+  } catch (e) {
+    if (!warned) { warned = true; console.error('db: Supabase client unavailable, using the JSON launch set:', e.message); }
+    return null;
+  }
   return client;
 }
+let warned = false;
 export const dbConfigured = () => !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY);
 // tests inject a fake client here; production never calls this
 export function _setClient(c) { client = c; }

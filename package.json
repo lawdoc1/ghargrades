@@ -11,7 +11,7 @@
     "generate": "node api/generate-pages.js",
     "seed": "node api/seed.js"
   },
-  "engines": { "node": ">=20" },
+  "engines": { "node": "22.x" },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
     "express": "^4.21.2"

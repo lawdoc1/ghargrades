@@ -4,6 +4,9 @@ import { indiaRouter } from './api/router.js';
 import { INDIA } from './api/config.js';
 import { ensureSeeded } from './api/projects.js';
 
+process.on('unhandledRejection', e => console.error('unhandled rejection:', e && e.message));
+process.on('uncaughtException', e => console.error('uncaught exception:', e && e.message));
+
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', true);
