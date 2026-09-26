@@ -12,8 +12,8 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 
 export function indiaRouter() {
   const r = express.Router();
-  // one canonical host once the domain is attached: www -> apex
-  r.use((req, res, next) => { const h = hostOf(req); if (INDIA.domain && h === 'www.' + INDIA.domain) return res.redirect(301, `https://${INDIA.domain}${req.originalUrl}`); next(); });
+  // one canonical host: the non-canonical form (www or apex, whichever INDIA_DOMAIN is not) redirects to it
+  r.use((req, res, next) => { const h = hostOf(req); if (h === INDIA.alt_host) return res.redirect(301, `https://${INDIA.domain}${req.originalUrl}`); next(); });
   r.use('/assets', express.static(join(__dir, '..', 'frontend', 'assets'), { maxAge: '7d' }));   // Netlify serves these on ghargrades.com; the API serves them too
   r.get('/', bangalorePage);
   r.get('/bangalore', (req, res) => res.redirect(301, '/'));

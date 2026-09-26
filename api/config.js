@@ -1,12 +1,16 @@
 // config.js — THE single source of truth for the India property intelligence service.
 // Everything changeable lives here: brand, price, city, portal, routes, contact. Set on Railway:
 //   INDIA_BRAND="GharGrades"         the name on every page (defaults to GharGrades)
-//   INDIA_DOMAIN=ghargrades.com      canonical host (defaults to ghargrades.com; www redirects to it)
+//   INDIA_DOMAIN=ghargrades.com      canonical host as the site is reached; use www.ghargrades.com when the apex only forwards
 //   INDIA_PUBLIC=1                   allow search indexing (off by default so test URLs stay out of Google)
 //   INDIA_CONTACT_EMAIL, INDIA_WHATSAPP, ANTHROPIC_API_KEY, AGENT_MODEL   optional
 // Repo layout mirrors the standard: server.js at the root, modules in /api, records in /data, static assets in /frontend.
 
-const DOMAIN = String(process.env.INDIA_DOMAIN || 'ghargrades.com').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
+// INDIA_DOMAIN is the canonical host exactly as the site should be reached: 'ghargrades.com' or 'www.ghargrades.com'.
+// The other form redirects to it (router.js). APEX (no www) is used for email defaults.
+const DOMAIN = String(process.env.INDIA_DOMAIN || 'ghargrades.com').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+const APEX = DOMAIN.replace(/^www\./, '');
+const ALT_HOST = DOMAIN.startsWith('www.') ? APEX : 'www.' + APEX;
 const titleCase = s => s.replace(/(^|[\s-])([a-z])/g, (m, a, b) => a + b.toUpperCase());
 const NAME = (process.env.INDIA_BRAND || 'GharGrades').trim();
 
@@ -22,10 +26,12 @@ export const INDIA = {
   layers: ['Property Intelligence', 'Decision Agent', 'Buyers Network'],
   routes: { page: '/', report: '/report', api: '/api' },
   free_lookup_fields: ['status', 'original_completion', 'extension_count'],
-  domain: DOMAIN,
+  domain: DOMAIN,          // canonical host
+  apex: APEX,
+  alt_host: ALT_HOST,      // the non-canonical form, redirected to domain
   public: process.env.INDIA_PUBLIC === '1' || !!DOMAIN,
   whatsapp_number: process.env.INDIA_WHATSAPP || '',
-  contact_email: (process.env.INDIA_CONTACT_EMAIL || (DOMAIN ? `hello@${DOMAIN}` : 'hello@example.com')).trim(),
+  contact_email: (process.env.INDIA_CONTACT_EMAIL || `hello@${APEX}`).trim(),
   brand: { name: NAME, short: NAME.length <= 20 ? NAME : 'Bengaluru', score_name: /property/i.test(NAME) ? `${NAME} Score` : `${NAME} Property Score`, copyright: NAME },
   tagline: 'The records are public. The intelligence isn\u2019t.',
   h1: 'Every project has a record. Check before you book.',
