@@ -1,14 +1,14 @@
 // config.js — THE single source of truth for the India property intelligence service.
 // Everything changeable lives here: brand, price, city, portal, routes, contact. Set on Railway:
 //   INDIA_BRAND="GharGrades"         the name on every page (defaults to GharGrades)
-//   INDIA_DOMAIN=ghargrades.com      canonical host as the site is reached; use www.ghargrades.com when the apex only forwards
+//   (no variable needed) canonical host is www.ghargrades.com in code; the apex forwards to it at GoDaddy
 //   INDIA_PUBLIC=1                   allow search indexing (off by default so test URLs stay out of Google)
 //   INDIA_CONTACT_EMAIL, INDIA_WHATSAPP, ANTHROPIC_API_KEY, AGENT_MODEL   optional
 // Repo layout mirrors the standard: server.js at the root, modules in /api, records in /data, static assets in /frontend.
 
 // INDIA_DOMAIN is the canonical host exactly as the site should be reached: 'ghargrades.com' or 'www.ghargrades.com'.
 // The other form redirects to it (router.js). APEX (no www) is used for email defaults.
-const DOMAIN = String(process.env.INDIA_DOMAIN || 'ghargrades.com').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+const DOMAIN = String(process.env.INDIA_DOMAIN || 'www.ghargrades.com').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
 const APEX = DOMAIN.replace(/^www\./, '');
 const ALT_HOST = DOMAIN.startsWith('www.') ? APEX : 'www.' + APEX;
 const titleCase = s => s.replace(/(^|[\s-])([a-z])/g, (m, a, b) => a + b.toUpperCase());
